@@ -1,8 +1,12 @@
 # @agenticmcpstores/developer-mcp
 
-Public MCP server that exposes the [Trusteed](https://www.trusteed.xyz) agentic commerce platform as interactive tools for IDEs and AI agents. Includes the complete **Agent Control Points** specification (R001–R010) — the enforcement rules that govern when autonomous checkouts are allowed, reviewed, or blocked.
+Public MCP server that exposes the [Trusteed](https://www.trusteed.xyz) complete **Agent Control Points** — the enforcement rules that govern when autonomous checkouts are allowed, reviewed, or blocked.
 
-Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No authentication required.
+These rules establish the relationship model between the merchant and purchasing agents, generating a security layer that increases the merchant's confidence in the new agentic commerce model by preventing malicious or low-reputation agents from making purchases in their store.
+
+Works with Shopify, WooCommerce, PrestaShop and Magento. Roadmap: Odoo, Wix and OpenCart.
+
+Compatible with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No authentication required.
 
 ---
 
@@ -547,7 +551,6 @@ HTTP mode is stateless (one server per request). CORS is open (`*`). Rate limit:
 ## Links
 
 - Platform: [trusteed.xyz](https://www.trusteed.xyz)
-- Agent API docs: [trusteed.xyz/docs](https://www.trusteed.xyz/docs)
 - Agent policy: [trusteed.xyz/.well-known/agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json)
 - Agent playbooks: [trusteed.xyz/.well-known/agent-playbooks.json](https://www.trusteed.xyz/.well-known/agent-playbooks.json)
 - MCP manifest: [trusteed.xyz/.well-known/mcp.json](https://www.trusteed.xyz/.well-known/mcp.json)
