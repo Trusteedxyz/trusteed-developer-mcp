@@ -24,7 +24,7 @@ export function registerCreateSandboxKey(
     "create_sandbox_key",
     {
       description:
-        "Generate a temporary sandbox API key for testing AgenticMCPStores without registering. Key valid for 24 hours, max 3 keys per IP per 24h. Perfect for evaluating the platform and running quick demos.",
+        "Generate a temporary sandbox API key for testing Trusteed without registering. Key valid for 24 hours, max 3 keys per IP per 24h. Perfect for evaluating the platform and running quick demos.",
       inputSchema: {},
       outputSchema: createSandboxKeyOutputSchema,
     },

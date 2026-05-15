@@ -8,7 +8,7 @@ export function registerTroubleshootPrompt(
 ): void {
   server.prompt(
     "troubleshoot",
-    "Debug common integration issues with AgenticMCPStores Agent API",
+    "Debug common integration issues with Trusteed Agent API",
     {
       error: z
         .string()
@@ -22,7 +22,7 @@ export function registerTroubleshootPrompt(
         ),
     },
     ({ error, endpoint }) => {
-      let prompt = `You are troubleshooting an AgenticMCPStores integration issue.
+      let prompt = `You are troubleshooting an Trusteed integration issue.
 
 Common issues and solutions:
 

@@ -158,7 +158,7 @@ export function registerGetTrustFramework(
         )
         .join("\n");
 
-      const markdown = `## AgenticMCPStores Trust Framework
+      const markdown = `## Trusteed Trust Framework
 
 ### Trust Score Components (8)
 

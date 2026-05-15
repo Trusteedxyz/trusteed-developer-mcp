@@ -1,7 +1,7 @@
 /**
  * Developer MCP Server — Factory
  *
- * Public, unauthenticated MCP server that exposes AgenticMCPStores
+ * Public, unauthenticated MCP server that exposes Trusteed
  * documentation as interactive tools for IDEs (Claude Desktop, VS Code,
  * Cursor, JetBrains).
  *
@@ -33,7 +33,7 @@ export interface DeveloperMCPServerConfig {
 }
 
 const DEFAULT_CONFIG: Required<DeveloperMCPServerConfig> = {
-  name: "AgenticMCPStores Developer MCP",
+  name: "Trusteed Developer MCP",
   version: "1.0.0",
   baseUrl: "https://www.trusteed.xyz",
 };

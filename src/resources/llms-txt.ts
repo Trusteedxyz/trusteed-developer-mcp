@@ -6,7 +6,7 @@ import type { DeveloperMCPServerConfig } from "../server.js";
  * Agents can read this to understand the full platform manifest.
  */
 
-const LLMS_TXT_CONTENT = `# AgenticMCPStores — llms.txt (summary for MCP resource)
+const LLMS_TXT_CONTENT = `# Trusteed — llms.txt (summary for MCP resource)
 
 Platform: Multi-merchant trust and execution layer for agentic commerce.
 API Base: https://www.trusteed.xyz/api/v1
@@ -36,7 +36,7 @@ export function registerLlmsTxtResource(
     "docs://llms.txt",
     {
       description:
-        "Summary of the AgenticMCPStores llms.txt manifest — platform overview, endpoints, trust score, and discovery files.",
+        "Summary of the Trusteed llms.txt manifest — platform overview, endpoints, trust score, and discovery files.",
       mimeType: "text/plain",
     },
     async () => ({

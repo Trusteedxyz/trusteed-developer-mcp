@@ -27,7 +27,7 @@ export const DOCS: readonly DocEntry[] = [
     id: "api-overview",
     section: "api",
     title: "Agent API Overview",
-    body: `AgenticMCPStores exposes a single authenticated REST API for AI agents.
+    body: `Trusteed exposes a single authenticated REST API for AI agents.
 
 **Base URL:** \`https://www.trusteed.xyz/api/v1\`
 **Authentication:** HTTP header \`X-Agent-Api-Key: <key>\`
@@ -215,7 +215,7 @@ Only BASIC or above can appear in agent search results.`,
     id: "protocol-x402",
     section: "protocols",
     title: "x402 — Stablecoin Payment Protocol (Coinbase/Cloudflare USDC)",
-    body: `x402 enables AI agents to pay with USDC stablecoins. AgenticMCPStores is the only
+    body: `x402 enables AI agents to pay with USDC stablecoins. Trusteed is the only
 agentic commerce gateway with x402 support in production (195 tests).
 
 **How it works:**
@@ -261,7 +261,7 @@ curl -X POST https://www.trusteed.xyz/api/v1/agent/search \\
 \`\`\`json
 {
   "mcpServers": {
-    "agenticmcpstores-dev": {
+    "trusteed-dev": {
       "type": "http",
       "url": "https://api.trusteed.xyz/developer/mcp"
     }
@@ -277,9 +277,9 @@ the trust framework — all within the chat interface.`,
     section: "integration",
     title: "LangChain Integration (TypeScript)",
     body: `\`\`\`typescript
-import { AgenticMCPStoresToolkit } from "@agenticmcpstores/langchain";
+import { TrusteedToolkit } from "@trusteed/langchain";
 
-const toolkit = new AgenticMCPStoresToolkit({
+const toolkit = new TrusteedToolkit({
   apiKey: process.env.AMCP_API_KEY,
 });
 
@@ -294,7 +294,7 @@ Available tools: search_products, get_product_detail, compare_products,
 check_availability, create_cart, preview_checkout, complete_checkout,
 get_merchant_profile.
 
-SDK: \`npm install @agenticmcpstores/langchain\` (coming soon)`,
+SDK: \`npm install @trusteed/langchain\` (coming soon)`,
   },
   {
     id: "integration-vscode",
@@ -306,7 +306,7 @@ SDK: \`npm install @agenticmcpstores/langchain\` (coming soon)`,
 {
   "mcp": {
     "servers": {
-      "agenticmcpstores-dev": {
+      "trusteed-dev": {
         "type": "http",
         "url": "https://api.trusteed.xyz/developer/mcp"
       }
@@ -320,7 +320,7 @@ For Cursor, the same config works in \`.cursor/mcp.json\`:
 \`\`\`json
 {
   "mcpServers": {
-    "agenticmcpstores-dev": {
+    "trusteed-dev": {
       "url": "https://api.trusteed.xyz/developer/mcp"
     }
   }
@@ -347,13 +347,13 @@ response = await client.post("/agent/search", json={
 products = response.json()
 \`\`\`
 
-SDK: \`pip install agenticmcpstores\` (coming soon)
+SDK: \`pip install trusteed\` (coming soon)
 
 LangChain integration:
 \`\`\`python
-from agenticmcpstores.integrations.langchain import AgenticMCPStoresToolkit
+from trusteed.integrations.langchain import TrusteedToolkit
 
-toolkit = AgenticMCPStoresToolkit(api_key="agnt_your_key")
+toolkit = TrusteedToolkit(api_key="agnt_your_key")
 tools = toolkit.get_tools()
 \`\`\``,
   },
@@ -391,7 +391,7 @@ merchant-verification, human-presence.`,
     body: `An open standard for AI agents to connect to external services. MCP defines tools
 (actions an agent can take), resources (reference data), and prompts (guided workflows).
 
-AgenticMCPStores uses MCP for:
+Trusteed uses MCP for:
 - Store connectors (Shopify, WooCommerce, Etsy — per-merchant MCP servers)
 - Developer documentation (this Developer MCP server)
 - Agent marketplace (coming soon — Marketplace MCP)`,
@@ -401,7 +401,7 @@ AgenticMCPStores uses MCP for:
     id: "general-discovery",
     section: "general",
     title: "Agent Auto-Discovery Files",
-    body: `AgenticMCPStores serves machine-readable discovery files at well-known paths:
+    body: `Trusteed serves machine-readable discovery files at well-known paths:
 
 | File                              | Purpose                                    |
 |-----------------------------------|--------------------------------------------|
@@ -428,7 +428,7 @@ Connector status per merchant: \`GET /agent/merchants/{slug}\` field: \`platform
   {
     id: "general-not",
     section: "general",
-    title: "What AgenticMCPStores Is NOT",
+    title: "What Trusteed Is NOT",
     body: `- Not a payment processor (initiates checkout flows, does not process payments)
 - Not a merchant of record
 - Not a legal certification authority

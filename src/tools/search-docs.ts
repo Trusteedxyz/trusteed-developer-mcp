@@ -34,7 +34,7 @@ export function registerSearchDocs(
     "search_docs",
     {
       description:
-        "Search AgenticMCPStores documentation by keyword. Returns matching sections with relevance ranking. Use this to find API endpoints, trust framework details, protocol specs, integration guides, or glossary terms.",
+        "Search Trusteed documentation by keyword. Returns matching sections with relevance ranking. Use this to find API endpoints, trust framework details, protocol specs, integration guides, or glossary terms.",
       inputSchema: {
         query: z
           .string()

@@ -4,9 +4,9 @@
  * Developer MCP Server — Entry Point
  *
  * Supports dual transport:
- *   - stdio (default): `npx @agenticmcpstores/developer-mcp`
- *   - HTTP:            `npx @agenticmcpstores/developer-mcp --http`
- *                      `npx @agenticmcpstores/developer-mcp --http --port=3100`
+ *   - stdio (default): `npx @trusteed/developer-mcp`
+ *   - HTTP:            `npx @trusteed/developer-mcp --http`
+ *                      `npx @trusteed/developer-mcp --http --port=3100`
  *
  * Rate limiting: 100 requests / 15 minutes per IP (HTTP mode only).
  */

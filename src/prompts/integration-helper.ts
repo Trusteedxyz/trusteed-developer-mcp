@@ -8,7 +8,7 @@ export function registerIntegrationHelperPrompt(
 ): void {
   server.prompt(
     "integration_helper",
-    "Guided workflow to help integrate AgenticMCPStores into your AI agent or application",
+    "Guided workflow to help integrate Trusteed into your AI agent or application",
     {
       framework: z
         .string()
@@ -24,9 +24,9 @@ export function registerIntegrationHelperPrompt(
         ),
     },
     ({ framework, useCase }) => {
-      let prompt = `You are helping a developer integrate AgenticMCPStores into their project.
+      let prompt = `You are helping a developer integrate Trusteed into their project.
 
-AgenticMCPStores is a multi-merchant trust and execution layer for agentic commerce.
+Trusteed is a multi-merchant trust and execution layer for agentic commerce.
 It provides a single API to search, compare, and purchase products across verified
 Shopify, WooCommerce, and Etsy merchants — with transparent trust scores.
 

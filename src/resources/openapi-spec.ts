@@ -4,7 +4,7 @@ import type { DeveloperMCPServerConfig } from "../server.js";
 const OPENAPI_SUMMARY = {
   openapi: "3.0.3",
   info: {
-    title: "AgenticMCPStores Agent API",
+    title: "Trusteed Agent API",
     version: "1.0.0",
     description:
       "Multi-merchant trust and execution layer for agentic commerce",
@@ -61,7 +61,7 @@ export function registerOpenApiSpecResource(
     "api://openapi.json",
     {
       description:
-        "Summary of the AgenticMCPStores OpenAPI 3.0 specification — endpoints, auth, and structure. Full spec at /api/openapi.json.",
+        "Summary of the Trusteed OpenAPI 3.0 specification — endpoints, auth, and structure. Full spec at /api/openapi.json.",
       mimeType: "application/json",
     },
     async () => ({

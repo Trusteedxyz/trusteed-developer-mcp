@@ -1,13 +1,13 @@
 {
-  "name": "@agenticmcpstores/developer-mcp",
+  "name": "@trusteed/developer-mcp",
   "version": "0.1.0",
-  "description": "Public MCP server exposing AgenticMCPStores documentation as interactive tools for IDEs",
+  "description": "Public MCP server exposing Trusteed documentation as interactive tools for IDEs",
   "private": false,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "agenticmcpstores-dev-mcp": "./dist/index.js"
+    "trusteed-dev-mcp": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",
@@ -29,7 +29,7 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "agenticmcpstores",
+    "trusteed",
     "developer-tools",
     "ai-agents",
     "agentic-commerce"

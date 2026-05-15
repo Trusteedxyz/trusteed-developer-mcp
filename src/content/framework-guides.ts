@@ -54,11 +54,11 @@ curl -X POST https://www.trusteed.xyz/api/v1/agent/compare \\
   typescript: {
     id: "typescript",
     name: "TypeScript / Node.js",
-    install: "npm install @agenticmcpstores/sdk",
+    install: "npm install @trusteed/sdk",
     setupTime: "3 minutes",
-    code: `import { AgenticMCPStores } from "@agenticmcpstores/sdk";
+    code: `import { Trusteed } from "@trusteed/sdk";
 
-const client = new AgenticMCPStores({
+const client = new Trusteed({
   apiKey: process.env.AMCP_API_KEY!,
 });
 
@@ -83,13 +83,13 @@ for (const product of results.items) {
   python: {
     id: "python",
     name: "Python",
-    install: "pip install agenticmcpstores",
+    install: "pip install trusteed",
     setupTime: "3 minutes",
     code: `import asyncio
-from agenticmcpstores import AgenticMCPStores
+from trusteed import Trusteed
 
 async def main():
-    client = AgenticMCPStores(api_key="agnt_your_key")
+    client = Trusteed(api_key="agnt_your_key")
 
     # Search products
     results = await client.search_products(
@@ -112,13 +112,13 @@ asyncio.run(main())`,
   langchain: {
     id: "langchain",
     name: "LangChain (TypeScript)",
-    install: "npm install @agenticmcpstores/langchain",
+    install: "npm install @trusteed/langchain",
     setupTime: "5 minutes",
-    code: `import { AgenticMCPStoresToolkit } from "@agenticmcpstores/langchain";
+    code: `import { TrusteedToolkit } from "@trusteed/langchain";
 import { ChatOpenAI } from "@langchain/openai";
 import { AgentExecutor, createOpenAIFunctionsAgent } from "langchain/agents";
 
-const toolkit = new AgenticMCPStoresToolkit({
+const toolkit = new TrusteedToolkit({
   apiKey: process.env.AMCP_API_KEY!,
 });
 
@@ -141,13 +141,13 @@ const result = await executor.invoke({
   "vercel-ai": {
     id: "vercel-ai",
     name: "Vercel AI SDK",
-    install: "npm install @agenticmcpstores/vercel-ai ai",
+    install: "npm install @trusteed/vercel-ai ai",
     setupTime: "5 minutes",
-    code: `import { createAgenticMCPStoresTools } from "@agenticmcpstores/vercel-ai";
+    code: `import { createTrusteedTools } from "@trusteed/vercel-ai";
 import { generateText } from "ai";
 import { openai } from "@ai-sdk/openai";
 
-const tools = createAgenticMCPStoresTools({
+const tools = createTrusteedTools({
   apiKey: process.env.AMCP_API_KEY!,
 });
 
@@ -166,12 +166,12 @@ const result = await generateText({
   "openai-agents": {
     id: "openai-agents",
     name: "OpenAI Agent SDK",
-    install: "npm install @agenticmcpstores/openai-agents @openai/agents",
+    install: "npm install @trusteed/openai-agents @openai/agents",
     setupTime: "5 minutes",
     code: `import { Agent } from "@openai/agents";
-import { createAgenticMCPStoresTools } from "@agenticmcpstores/openai-agents";
+import { createTrusteedTools } from "@trusteed/openai-agents";
 
-const tools = createAgenticMCPStoresTools({
+const tools = createTrusteedTools({
   apiKey: process.env.AMCP_API_KEY!,
 });
 
@@ -200,7 +200,7 @@ const result = await agent.run("Find me the cheapest laptop under $500");`,
 
 {
   "mcpServers": {
-    "agenticmcpstores-dev": {
+    "trusteed-dev": {
       "type": "http",
       "url": "https://api.trusteed.xyz/developer/mcp"
     }
@@ -226,13 +226,13 @@ const result = await agent.run("Find me the cheapest laptop under $500");`,
     code: `// .cursor/mcp.json
 {
   "mcpServers": {
-    "agenticmcpstores-dev": {
+    "trusteed-dev": {
       "url": "https://api.trusteed.xyz/developer/mcp"
     }
   }
 }
 
-// Now Cursor's AI can access AgenticMCPStores docs directly.
+// Now Cursor's AI can access Trusteed docs directly.
 // Try: "How do I integrate the Agent API with my TypeScript project?"`,
     nextSteps: [
       "Use the search_docs tool to find specific API details",
@@ -250,7 +250,7 @@ const result = await agent.run("Find me the cheapest laptop under $500");`,
 {
   "mcp": {
     "servers": {
-      "agenticmcpstores-dev": {
+      "trusteed-dev": {
         "type": "http",
         "url": "https://api.trusteed.xyz/developer/mcp"
       }
@@ -258,8 +258,8 @@ const result = await agent.run("Find me the cheapest laptop under $500");`,
   }
 }
 
-// Copilot Chat can now access AgenticMCPStores documentation.
-// Try in Copilot Chat: @agenticmcpstores how does checkout work?`,
+// Copilot Chat can now access Trusteed documentation.
+// Try in Copilot Chat: @trusteed how does checkout work?`,
     nextSteps: [
       "Use Copilot Chat to explore the API",
       "Generate integration code from documentation",

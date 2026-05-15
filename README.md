@@ -1,4 +1,4 @@
-# @agenticmcpstores/developer-mcp
+# @trusteed/developer-mcp
 
 Public MCP server that exposes the [Trusteed](https://www.trusteed.xyz) complete **Agent Control Points** — the enforcement rules that govern when autonomous checkouts are allowed, reviewed, or blocked.
 
@@ -15,7 +15,7 @@ Compatible with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No
 ### npx (one-time run)
 
 ```bash
-npx @agenticmcpstores/developer-mcp
+npx @trusteed/developer-mcp
 ```
 
 ### Claude Desktop
@@ -25,9 +25,9 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "agenticmcpstores": {
+    "trusteed": {
       "command": "npx",
-      "args": ["-y", "@agenticmcpstores/developer-mcp"]
+      "args": ["-y", "@trusteed/developer-mcp"]
     }
   }
 }
@@ -40,9 +40,9 @@ Add to `.cursor/mcp.json` or `.vscode/mcp.json`:
 ```json
 {
   "servers": {
-    "agenticmcpstores": {
+    "trusteed": {
       "command": "npx",
-      "args": ["-y", "@agenticmcpstores/developer-mcp"]
+      "args": ["-y", "@trusteed/developer-mcp"]
     }
   }
 }
@@ -51,7 +51,7 @@ Add to `.cursor/mcp.json` or `.vscode/mcp.json`:
 ### HTTP mode (remote / multi-client)
 
 ```bash
-npx @agenticmcpstores/developer-mcp --http --port=3100
+npx @trusteed/developer-mcp --http --port=3100
 # POST http://localhost:3100/mcp
 # Rate limit: 100 req / 15 min per IP
 ```
@@ -66,7 +66,7 @@ flowchart LR
         CD["Claude Desktop\nCursor · VS Code"]
     end
 
-    subgraph MCP["@agenticmcpstores/developer-mcp"]
+    subgraph MCP["@trusteed/developer-mcp"]
         direction TB
         T1["🔧 Tools (7)"]
         R1["📄 Resources (3)"]
@@ -541,8 +541,8 @@ Resources are passive reference data readable by agents at any time.
 
 | Mode              | Command                                                  | Use case                                               |
 | ----------------- | -------------------------------------------------------- | ------------------------------------------------------ |
-| `stdio` (default) | `npx @agenticmcpstores/developer-mcp`                    | Claude Desktop, Cursor, VS Code — one process per host |
-| `HTTP`            | `npx @agenticmcpstores/developer-mcp --http --port=3100` | Remote deployment, multiple clients, CI pipelines      |
+| `stdio` (default) | `npx @trusteed/developer-mcp`                    | Claude Desktop, Cursor, VS Code — one process per host |
+| `HTTP`            | `npx @trusteed/developer-mcp --http --port=3100` | Remote deployment, multiple clients, CI pipelines      |
 
 HTTP mode is stateless (one server per request). CORS is open (`*`). Rate limit: 100 requests / 15 minutes per IP.
 
