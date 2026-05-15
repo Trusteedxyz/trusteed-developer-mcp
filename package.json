@@ -1,0 +1,37 @@
+{
+  "name": "@agenticmcpstores/developer-mcp",
+  "version": "0.1.0",
+  "description": "Public MCP server exposing AgenticMCPStores documentation as interactive tools for IDEs",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "agenticmcpstores-dev-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "agenticmcpstores",
+    "developer-tools",
+    "ai-agents",
+    "agentic-commerce"
+  ]
+}

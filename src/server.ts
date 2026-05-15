@@ -1,0 +1,70 @@
+/**
+ * Developer MCP Server — Factory
+ *
+ * Public, unauthenticated MCP server that exposes AgenticMCPStores
+ * documentation as interactive tools for IDEs (Claude Desktop, VS Code,
+ * Cursor, JetBrains).
+ *
+ * SDK features adopted from latest @modelcontextprotocol/sdk:
+ * - structuredContent + outputSchema: machine-readable JSON alongside text
+ * - Tool annotations: readOnlyHint for all tools (docs are read-only)
+ * - MCP resources: passive reference data (llms.txt, agent-policy, openapi)
+ * - MCP prompts: guided workflows (integration-helper, troubleshoot)
+ */
+
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { registerSearchDocs } from "./tools/search-docs.js";
+import { registerGetOpenApiSchema } from "./tools/get-openapi-schema.js";
+import { registerGetIntegrationGuide } from "./tools/get-integration-guide.js";
+import { registerGetTrustFramework } from "./tools/get-trust-framework.js";
+import { registerGetProtocolInfo } from "./tools/get-protocol-info.js";
+import { registerCreateSandboxKey } from "./tools/create-sandbox-key.js";
+import { registerGetAgentRules } from "./tools/get-agent-rules.js";
+import { registerLlmsTxtResource } from "./resources/llms-txt.js";
+import { registerAgentPolicyResource } from "./resources/agent-policy.js";
+import { registerOpenApiSpecResource } from "./resources/openapi-spec.js";
+import { registerIntegrationHelperPrompt } from "./prompts/integration-helper.js";
+import { registerTroubleshootPrompt } from "./prompts/troubleshoot.js";
+
+export interface DeveloperMCPServerConfig {
+  readonly name?: string;
+  readonly version?: string;
+  readonly baseUrl?: string;
+}
+
+const DEFAULT_CONFIG: Required<DeveloperMCPServerConfig> = {
+  name: "AgenticMCPStores Developer MCP",
+  version: "1.0.0",
+  baseUrl: "https://www.trusteed.xyz",
+};
+
+export function createDeveloperMCPServer(
+  config: DeveloperMCPServerConfig = {}
+): McpServer {
+  const resolved = { ...DEFAULT_CONFIG, ...config };
+
+  const server = new McpServer({
+    name: resolved.name,
+    version: resolved.version,
+  });
+
+  // --- Tools (7) ---
+  registerSearchDocs(server, resolved);
+  registerGetOpenApiSchema(server, resolved);
+  registerGetIntegrationGuide(server, resolved);
+  registerGetTrustFramework(server, resolved);
+  registerGetProtocolInfo(server, resolved);
+  registerGetAgentRules(server, resolved);
+  registerCreateSandboxKey(server, resolved);
+
+  // --- Resources (3) — passive reference data ---
+  registerLlmsTxtResource(server, resolved);
+  registerAgentPolicyResource(server, resolved);
+  registerOpenApiSpecResource(server, resolved);
+
+  // --- Prompts (2) — guided workflows ---
+  registerIntegrationHelperPrompt(server, resolved);
+  registerTroubleshootPrompt(server, resolved);
+
+  return server;
+}
