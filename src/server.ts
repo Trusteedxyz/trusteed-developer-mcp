@@ -20,6 +20,9 @@ import { registerGetTrustFramework } from "./tools/get-trust-framework.js";
 import { registerGetProtocolInfo } from "./tools/get-protocol-info.js";
 import { registerCreateSandboxKey } from "./tools/create-sandbox-key.js";
 import { registerGetAgentRules } from "./tools/get-agent-rules.js";
+import { registerGetExtensionManifestSchema } from "./tools/get-extension-manifest-schema.js";
+import { registerGetWebhookEventSchema } from "./tools/get-webhook-event-schema.js";
+import { registerGetExtensionScopes } from "./tools/get-extension-scopes.js";
 import { registerLlmsTxtResource } from "./resources/llms-txt.js";
 import { registerAgentPolicyResource } from "./resources/agent-policy.js";
 import { registerOpenApiSpecResource } from "./resources/openapi-spec.js";
@@ -48,7 +51,7 @@ export function createDeveloperMCPServer(
     version: resolved.version,
   });
 
-  // --- Tools (7) ---
+  // --- Tools (10) ---
   registerSearchDocs(server, resolved);
   registerGetOpenApiSchema(server, resolved);
   registerGetIntegrationGuide(server, resolved);
@@ -56,6 +59,10 @@ export function createDeveloperMCPServer(
   registerGetProtocolInfo(server, resolved);
   registerGetAgentRules(server, resolved);
   registerCreateSandboxKey(server, resolved);
+  // Extension marketplace docs (developer-time guidance only — not runtime validators)
+  registerGetExtensionManifestSchema(server, resolved);
+  registerGetWebhookEventSchema(server, resolved);
+  registerGetExtensionScopes(server, resolved);
 
   // --- Resources (3) — passive reference data ---
   registerLlmsTxtResource(server, resolved);

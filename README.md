@@ -1,12 +1,26 @@
 # @trusteed/developer-mcp
 
-Public MCP server that exposes the [Trusteed](https://www.trusteed.xyz) complete **Agent Control Points** — the enforcement rules that govern when autonomous checkouts are allowed, reviewed, or blocked.
+**Integration assistant for the [Trusteed](https://www.trusteed.xyz) merchant-side agent policy, trust scoring, and checkout enforcement APIs.**
 
-These rules establish the relationship model between the merchant and purchasing agents, generating a security layer that increases the merchant's confidence in the new agentic commerce model by preventing malicious or low-reputation agents from making purchases in their store.
+This is a public, read-only MCP server for **developer enablement**: it answers questions, returns the Agent Control Points (R001–R010), shows the OpenAPI fragments, generates integration code for the most common frameworks, and issues short-lived sandbox keys. It is intended to live alongside your IDE while you build against Trusteed.
 
-Works with Shopify, WooCommerce, PrestaShop and Magento. Roadmap: Odoo, Wix and OpenCart.
+It is **not** a checkout runtime. Production enforcement happens through the Trusteed API, the merchant plugins (Shopify, WooCommerce, PrestaShop, Odoo, Magento, Wix), and the signed RuleSnapshot fetched offline by those plugins. The decisions an LLM produces from this MCP's responses are documentation guidance, not authorisation.
 
-Compatible with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No authentication required.
+Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No authentication required for documentation tools; `create_sandbox_key` is rate-limited per IP.
+
+---
+
+## When NOT to use this MCP
+
+This server is intentionally narrow. Do **not** use it for:
+
+- **Production authorisation decisions.** The `get_agent_rules` output describes how R001–R010 _work_; it does not _execute_ them. Call `POST /api/v1/rules/evaluate` (or fetch the signed RuleSnapshot for offline enforcement) for any real allow/block decision.
+- **Storing or rotating secrets.** Never paste long-lived API keys, merchant credentials, or production tokens into prompts that reach this MCP. Sandbox keys returned by `create_sandbox_key` are designed to be disposable (24 h, max 3 per IP / 24 h).
+- **Handling PCI, PII, or payment data.** The tools return documentation, schemas, and configuration metadata only. No PAN, PII, or order content flows through this server.
+- **Compliance attestation.** LLM-generated explanations of the trust framework or rule semantics are not legally binding. Use the canonical sources (the [trust methodology page](https://www.trusteed.xyz/trust/methodology), the [agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json), the OpenAPI spec) for any compliance, audit, or legal review.
+- **High-volume programmatic access.** HTTP mode is rate-limited (100 req / 15 min / IP). For bulk documentation ingest, mirror the OpenAPI and Markdown sources directly from the public site or repo.
+
+If you need a server that _executes_ commerce actions on behalf of an agent (carts, checkouts, payments), that is a separate concern — Trusteed exposes those via the per-merchant MCP server documented at `trusteed.xyz/:storeSlug/mcp` and via the merchant plugins. This package will not grow into one.
 
 ---
 
@@ -68,7 +82,7 @@ flowchart LR
 
     subgraph MCP["@trusteed/developer-mcp"]
         direction TB
-        T1["🔧 Tools (7)"]
+        T1["🔧 Tools (10)"]
         R1["📄 Resources (3)"]
         P1["💬 Prompts (2)"]
     end
@@ -156,6 +170,34 @@ Step-by-step integration guide with working code for a specific framework.
 Generates a temporary 24-hour API key for testing without registering. Max 3 keys per IP per 24h.
 
 No parameters.
+
+---
+
+### `get_extension_manifest_schema`
+
+Returns the Trusteed extension manifest schema: required fields, per-field constraints with developer-oriented notes, and the signing envelope (JWS Compact Ed25519, RFC 8785 canonicalization, developer + Trusteed countersignature). Documentation only — for runtime validation, use the `@trusteed/sdk-extension` linter or fetch the canonical schema URL.
+
+No parameters.
+
+---
+
+### `get_webhook_event_schema`
+
+Returns the Trusteed webhook delivery contract: envelope structure, HMAC-SHA256 canonical base string `v1.{ts}.{nonce}.{METHOD}.{path}.{sha256_hex(body)}`, retry schedule `[5s, 30s, 5min, 1h, 6h]` with DLQ at attempt 6, circuit-breaker semantics, and per-event payload summaries.
+
+| Parameter    | Type   | Required | Description                                                                                                                                                                                                                                      |
+| ------------ | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `event_type` | string | —        | Single event to detail. One of: `agent.first_seen`, `agent.identified`, `checkout.created`, `checkout.completed`, `checkout.cancelled`, `checkout.blocked`, `refund.issued`, `rule.triggered`. Omit for the full envelope + signature reference. |
+
+---
+
+### `get_extension_scopes`
+
+Returns the catalog of `scopes_requested` enum values with data classification (public / operational / sensitive / PII), PII flag, minimum `risk_category` impact, an example use case, and an explicit "not for" anti-use case. Anchors the minimum-viable-scope principle: extensions touching `customers:read:pii` get manual review, high risk_category, and slower install conversion.
+
+| Parameter | Type   | Required | Description                                                                                                                                                                                                                                                                                                                                                       |
+| --------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scope`   | string | —        | Single scope name to focus on. One of: `events:subscribe:checkout`, `events:subscribe:rules`, `events:subscribe:refunds`, `events:subscribe:agents`, `agents:read`, `agents:read:reputation`, `checkouts:read`, `checkouts:read:pricing`, `customers:read:pii`, `rules:read`, `merchant_config:read:public`, `extension_config:write`. Omit for the full catalog. |
 
 ---
 
@@ -551,6 +593,7 @@ HTTP mode is stateless (one server per request). CORS is open (`*`). Rate limit:
 ## Links
 
 - Platform: [trusteed.xyz](https://www.trusteed.xyz)
+- Agent API docs: [trusteed.xyz/docs](https://www.trusteed.xyz/docs)
 - Agent policy: [trusteed.xyz/.well-known/agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json)
 - Agent playbooks: [trusteed.xyz/.well-known/agent-playbooks.json](https://www.trusteed.xyz/.well-known/agent-playbooks.json)
 - MCP manifest: [trusteed.xyz/.well-known/mcp.json](https://www.trusteed.xyz/.well-known/mcp.json)
