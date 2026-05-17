@@ -377,7 +377,7 @@ HTTP mode is stateless (one server per request). CORS is open (`*`). Rate limit:
 ## Links
 
 - Platform: [trusteed.xyz](https://www.trusteed.xyz)
-- Agent API docs: [trusteed.xyz/docs](https://www.trusteed.xyz/docs)
+- Demo store — live rules playground: [trusteed.xyz/en/demo-store](https://www.trusteed.xyz/en/demo-store)
 - Agent policy: [trusteed.xyz/.well-known/agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json)
 - Agent playbooks: [trusteed.xyz/.well-known/agent-playbooks.json](https://www.trusteed.xyz/.well-known/agent-playbooks.json)
 - MCP manifest: [trusteed.xyz/.well-known/mcp.json](https://www.trusteed.xyz/.well-known/mcp.json)
