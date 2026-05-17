@@ -2,7 +2,7 @@
 
 **Integration assistant for the [Trusteed](https://www.trusteed.xyz) merchant-side agent policy, trust scoring, and checkout enforcement APIs.**
 
-This is a public, read-only MCP server for **developer enablement**: it answers questions, returns the Agent Control Points (R001–R010), shows the OpenAPI fragments, generates integration code for the most common frameworks, and issues short-lived sandbox keys. It is intended to live alongside your IDE while you build against Trusteed.
+This is a public, read-only MCP server for **developer enablement**: it answers questions, returns the merchant agent rules (R001–R030), shows the OpenAPI fragments, generates integration code for the most common frameworks, and issues short-lived sandbox keys. It is intended to live alongside your IDE while you build against Trusteed.
 
 It is **not** a checkout runtime. Production enforcement happens through the Trusteed API, the merchant plugins (Shopify, WooCommerce, PrestaShop, Odoo, Magento, Wix), and the signed RuleSnapshot fetched offline by those plugins. The decisions an LLM produces from this MCP's responses are documentation guidance, not authorisation.
 
@@ -14,7 +14,7 @@ Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No auth
 
 This server is intentionally narrow. Do **not** use it for:
 
-- **Production authorisation decisions.** The `get_agent_rules` output describes how R001–R010 _work_; it does not _execute_ them. Call `POST /api/v1/rules/evaluate` (or fetch the signed RuleSnapshot for offline enforcement) for any real allow/block decision.
+- **Production authorisation decisions.** The `get_agent_rules` output describes how R001–R030 _work_; it does not _execute_ them. Call `POST /api/v1/rules/evaluate` (or fetch the signed RuleSnapshot for offline enforcement) for any real allow/block decision.
 - **Storing or rotating secrets.** Never paste long-lived API keys, merchant credentials, or production tokens into prompts that reach this MCP. Sandbox keys returned by `create_sandbox_key` are designed to be disposable (24 h, max 3 per IP / 24 h).
 - **Handling PCI, PII, or payment data.** The tools return documentation, schemas, and configuration metadata only. No PAN, PII, or order content flows through this server.
 - **Compliance attestation.** LLM-generated explanations of the trust framework or rule semantics are not legally binding. Use the canonical sources (the [trust methodology page](https://www.trusteed.xyz/trust/methodology), the [agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json), the OpenAPI spec) for any compliance, audit, or legal review.
@@ -90,7 +90,7 @@ flowchart LR
     subgraph API["Trusteed Platform"]
         direction TB
         AG["Agent API\n/api/v1/agent/*"]
-        RP["Rules Engine\nR001–R010"]
+        RP["Rules Engine\nR001–R030"]
         TS["Trust Score\n8 components"]
     end
 
@@ -118,7 +118,7 @@ Search the Trusteed documentation by keyword. Returns ranked results from the tr
 
 ### `get_agent_rules`
 
-Returns the 10 Agent Control Points (R001–R010) with tiers, configurable thresholds, trigger conditions, and examples. The primary reference for implementing the Trusteed enforcement model.
+Returns the 30 merchant agent rules (R001–R030) with tiers, configurable thresholds, trigger conditions, and examples. The primary reference for implementing the Trusteed enforcement model. These rules do not require eIDAS, QTSP, Visa Verifier, or payment-network-specific evidence unless a merchant explicitly configures such evidence elsewhere.
 
 | Parameter | Type   | Required | Description                                                               |
 | --------- | ------ | -------- | ------------------------------------------------------------------------- |
@@ -201,286 +201,70 @@ Returns the catalog of `scopes_requested` enum values with data classification (
 
 ---
 
-## Agent Control Points — R001–R010
+## Agent Control Points — R001–R030
 
-These 10 rules constitute the **Trusteed enforcement model**: the policy layer that evaluates every agentic checkout attempt before it proceeds. Rules are evaluated in two tiers.
+These 30 rules constitute the **Trusteed merchant rule catalog**: a policy layer for agentic commerce, checkout risk, merchant controls, and customer protection. They are ordinary merchant/catalog rules. They do **not** require eIDAS, QTSP, Visa Verifier, or any regulated identity provider unless a merchant separately configures those higher-assurance integrations.
+
+The public source of truth is the `get_agent_rules` MCP tool, which returns every rule with code, category, maturity, severity, evaluation phase, description, default action, evidence expectations, and examples.
 
 ```mermaid
 flowchart TD
-    START(["🤖 Agent initiates checkout"])
-    START --> T1_GATE["**Tier 1 — Kill-switch evaluation**\nAlways enforced · Not configurable"]
+    ROOT["Agent Rule Catalog R001-R030"]
+    ROOT --> KYA["KYA and identity\nR001-R008"]
+    ROOT --> HP["Merchant high-priority controls\nR009-R018"]
+    ROOT --> MP["Merchant medium-priority controls\nR019-R028"]
+    ROOT --> CP["Merchant control plane\nR029-R030"]
 
-    T1_GATE --> R001{"R001\nUNKNOWN_AGENT"}
-    R001 -->|"agentId = 'unknown_agent'\nOR trustScore unavailable"| BLOCK1["🚫 BLOCK"]
-    R001 -->|PASS| R007
+    KYA --> KYA_EX["Business identity, owner attestation,\ncredential verification, reputation,\ncart intent, policy, marketplace integrity"]
+    HP --> HP_EX["Price accuracy, tax/shipping,\navailability, payments, privacy,\nreturns, support, safety, fraud, subscriptions"]
+    MP --> MP_EX["Accessibility, localization,\nintegrations, webhook health,\nperformance, evidence completeness,\nconsent, disclosure, provenance, data minimization"]
+    CP --> CP_EX["Evidence freshness and\nsimple controls for merchants without advanced assurance rails"]
 
-    R007{"R007\nAMOUNT_SPIKE"}
-    R007 -->|"country IN OFAC list\nOR cart > 5× avg order"| BLOCK2["🚫 BLOCK"]
-    R007 -->|PASS| T2_GATE
-
-    T2_GATE["**Tier 2 — Configurable evaluation**\nMerchant-adjustable thresholds"]
-
-    T2_GATE --> R002{"R002\nLOW_TRUST_SCORE"}
-    R002 -->|"trustScore < threshold\n(default 30)"| BLOCK3["🚫 BLOCK"]
-    R002 -->|PASS| R003
-
-    R003{"R003\nHIGH_VELOCITY"}
-    R003 -->|"> maxAttempts\nin windowSeconds"| BLOCK4["🚫 BLOCK"]
-    R003 -->|PASS| R004
-
-    R004{"R004\nPROMO_ABUSE"}
-    R004 -->|"> maxAttempts\ndiscount codes tried"| BLOCK5["🚫 BLOCK"]
-    R004 -->|PASS| R005
-
-    R005{"R005\nRETURN_ABUSE"}
-    R005 -->|"refundRatio > maxRatio\nin windowDays"| BLOCK6["🚫 BLOCK"]
-    R005 -->|PASS| R006
-
-    R006{"R006\nCANCEL_POST_SHIP"}
-    R006 -->|"cancelCount > max\nin windowDays"| BLOCK7["🚫 BLOCK"]
-    R006 -->|PASS| R008
-
-    R008{"R008\nCATEGORY_DRIFT"}
-    R008 -->|"categorySimilarity\n< minSimilarity"| BLOCK8["🚫 BLOCK"]
-    R008 -->|PASS| R009
-
-    R009{"R009\nDISPUTE_HISTORY"}
-    R009 -->|"disputeCount > max\nin windowDays"| BLOCK9["🚫 BLOCK"]
-    R009 -->|PASS| R010
-
-    R010{"R010\nSTRIPE_HIGH_RISK"}
-    R010 -->|"Stripe Radar =\nrequired risk level"| BLOCK10["🚫 BLOCK"]
-    R010 -->|PASS| ALLOW(["✅ ALLOW checkout"])
-
-    style BLOCK1 fill:#ef4444,color:#fff
-    style BLOCK2 fill:#ef4444,color:#fff
-    style BLOCK3 fill:#f97316,color:#fff
-    style BLOCK4 fill:#f97316,color:#fff
-    style BLOCK5 fill:#f97316,color:#fff
-    style BLOCK6 fill:#f97316,color:#fff
-    style BLOCK7 fill:#f97316,color:#fff
-    style BLOCK8 fill:#f97316,color:#fff
-    style BLOCK9 fill:#f97316,color:#fff
-    style BLOCK10 fill:#f97316,color:#fff
-    style ALLOW fill:#22c55e,color:#fff
-    style T1_GATE fill:#1e293b,color:#fff
-    style T2_GATE fill:#1e40af,color:#fff
+    style ROOT fill:#1e293b,color:#fff
+    style KYA fill:#1e40af,color:#fff
+    style HP fill:#0f766e,color:#fff
+    style MP fill:#7c2d12,color:#fff
+    style CP fill:#334155,color:#fff
 ```
-
-### Tier 1 — Kill-switch rules (always enforced)
-
-These two rules cannot be disabled or reconfigured by merchants. They protect against OFAC violations and agents with no verifiable identity.
-
----
-
-#### R001 — UNKNOWN_AGENT
-
-**Fires when:** the agent has no verifiable identity (`agentId === "unknown_agent"`) or when an identity header is present but the platform cannot resolve a trust score for it.
-
-**Default action:** `BLOCK`
-
-**Why it exists:** Without a known identity, no other rule can be evaluated safely. An agent that cannot be identified cannot be trusted, rate-limited, or held accountable.
-
-**Parameters:** none (not merchant-configurable). Optional `r001.requireKyaLevel` (1 | 2 | 3) to enforce a minimum KYA verification tier.
-
-```json
-// merchantPolicies (optional)
-{ "r001": { "requireKyaLevel": 2 } }
-```
-
----
-
-#### R007 — AMOUNT_SPIKE
-
-**Fires when:** the billing or shipping country appears in the high-risk country list (OFAC sanctions by default: `KP`, `IR`, `SY`, `CU`), OR the cart total exceeds `spikeMultiplier × merchantAvgOrderCents`.
-
-**Default action:** `BLOCK`
-
-**Why it exists:** Catches two orthogonal fraud vectors in a single stateless rule — sanctions compliance and sudden order-size anomalies — without needing historical data.
-
-**Parameters:**
-
-| Key                     | Type       | Default                 | Description                                                                 |
-| ----------------------- | ---------- | ----------------------- | --------------------------------------------------------------------------- |
-| `highRiskCountries`     | `string[]` | `["KP","IR","SY","CU"]` | ISO-3166 country codes that trigger a block regardless of amount            |
-| `spikeMultiplier`       | `number`   | `5.0`                   | Block if `cartTotal / merchantAvgOrder > spikeMultiplier`                   |
-| `merchantAvgOrderCents` | `number`   | `undefined`             | Merchant's typical order value in cents. Spike check is skipped if not set. |
-
-```json
-{ "r007": { "spikeMultiplier": 3.0, "merchantAvgOrderCents": 5000 } }
-```
-
----
-
-### Tier 2 — Configurable rules
-
-Merchants can adjust thresholds or disable these rules via their `merchantPolicies` object. All default values are tuned for general e-commerce; high-volume or high-risk merchants should calibrate them.
-
----
-
-#### R002 — LOW_TRUST_SCORE
-
-**Fires when:** `agentTrustScore < threshold`.
-
-The Trusteed trust score (0–100) reflects the agent's historical behaviour: order completion rate, dispute frequency, return ratio, and velocity patterns. A fresh agent starts around 50 and moves up or down with each transaction.
-
-**Parameters:**
-
-| Key         | Type     | Default | Description                                                          |
-| ----------- | -------- | ------- | -------------------------------------------------------------------- |
-| `threshold` | `number` | `30`    | Minimum accepted trust score (0–100). Agents below this are blocked. |
-
-```json
-{ "r002": { "threshold": 45 } }
-```
-
----
-
-#### R003 — HIGH_VELOCITY_CHECKOUT
-
-**Fires when:** the agent has initiated more than `maxAttempts` checkout requests within the last `windowSeconds` seconds.
-
-Requires a historical lookup (velocity counter per `agentId`). If the lookup is unavailable, the rule passes by default (fail-open, non-critical path).
-
-**Parameters:**
-
-| Key             | Type     | Default | Description                                     |
-| --------------- | -------- | ------- | ----------------------------------------------- |
-| `windowSeconds` | `number` | `60`    | Rolling time window in seconds                  |
-| `maxAttempts`   | `number` | `5`     | Maximum checkout attempts allowed in the window |
-
-```json
-{ "r003": { "windowSeconds": 30, "maxAttempts": 3 } }
-```
-
----
-
-#### R004 — PROMO_ABUSE
-
-**Fires when:** the cart attribute `_discount_codes_tried` exceeds `maxAttempts`. This attribute is set by the platform when an agent sequentially probes discount codes in a single session.
-
-Stateless — no historical lookup required.
-
-**Parameters:**
-
-| Key           | Type     | Default | Description                                                  |
-| ------------- | -------- | ------- | ------------------------------------------------------------ |
-| `maxAttempts` | `number` | `5`     | Maximum discount codes the agent may try in one cart session |
-
-```json
-{ "r004": { "maxAttempts": 2 } }
-```
-
----
-
-#### R005 — RETURN_ABUSE
-
-**Fires when:** the agent's refund ratio (refunded orders ÷ total orders) over the lookback window exceeds `maxRatio`.
-
-Requires a historical lookup (`refundRatio(agentId, windowDays)`).
-
-**Parameters:**
-
-| Key          | Type     | Default | Description                                                            |
-| ------------ | -------- | ------- | ---------------------------------------------------------------------- |
-| `windowDays` | `number` | `90`    | Lookback period in days                                                |
-| `maxRatio`   | `number` | `0.5`   | Maximum accepted refund ratio (0.0–1.0). 0.5 = 50% of orders refunded. |
-
-```json
-{ "r005": { "windowDays": 30, "maxRatio": 0.3 } }
-```
-
----
-
-#### R006 — CANCEL_POST_SHIP
-
-**Fires when:** the agent has cancelled more than `maxCancellations` orders _after shipment_ in the lookback window. Post-shipment cancellations are a strong fraud signal (item received but refund claimed).
-
-Requires a historical lookup (`cancelCount(agentId, windowDays)`).
-
-**Parameters:**
-
-| Key                | Type     | Default | Description                                 |
-| ------------------ | -------- | ------- | ------------------------------------------- |
-| `windowDays`       | `number` | `90`    | Lookback period in days                     |
-| `maxCancellations` | `number` | `3`     | Maximum post-shipment cancellations allowed |
-
-```json
-{ "r006": { "windowDays": 60, "maxCancellations": 1 } }
-```
-
----
-
-#### R008 — CATEGORY_DRIFT
-
-**Fires when:** the cosine similarity between the current cart's product categories and the agent's historical purchase categories falls below `minSimilarity`. Detects account takeover (an attacker using a trusted agent identity to buy items outside its normal profile).
-
-Requires a historical lookup (`categorySimilarity(agentId, lineItems)`).
-
-**Parameters:**
-
-| Key              | Type     | Default          | Description                                                                         |
-| ---------------- | -------- | ---------------- | ----------------------------------------------------------------------------------- |
-| `minSimilarity`  | `number` | `0.4`            | Minimum category similarity (0.0–1.0). 0.0 = completely different, 1.0 = identical. |
-| `lookbackOrders` | `number` | platform default | Number of past orders used to build the category profile                            |
-
-```json
-{ "r008": { "minSimilarity": 0.6, "lookbackOrders": 20 } }
-```
-
----
-
-#### R009 — DISPUTE_HISTORY
-
-**Fires when:** the agent has opened more than `maxDisputes` payment disputes (chargebacks) in the lookback window.
-
-Requires a historical lookup (`disputeCount(agentId, windowDays)`).
-
-**Parameters:**
-
-| Key           | Type     | Default | Description                            |
-| ------------- | -------- | ------- | -------------------------------------- |
-| `windowDays`  | `number` | `30`    | Lookback period in days                |
-| `maxDisputes` | `number` | `2`     | Maximum disputes allowed in the window |
-
-```json
-{ "r009": { "windowDays": 90, "maxDisputes": 1 } }
-```
-
----
-
-#### R010 — STRIPE_HIGH_RISK
-
-**Fires when:** the payment method is Stripe-based AND Stripe Radar classifies the transaction at the configured risk level. Only evaluates transactions that use a Stripe payment method — all others pass automatically.
-
-Requires a lookup (`stripeRadarLevel(orderContext)`).
-
-**Parameters:**
-
-| Key               | Type                                  | Default     | Description                                          |
-| ----------------- | ------------------------------------- | ----------- | ---------------------------------------------------- |
-| `stripeRiskLevel` | `"highest" \| "elevated" \| "normal"` | `"highest"` | Block transactions at or above this Radar risk level |
-
-```json
-{ "r010": { "stripeRiskLevel": "elevated" } }
-```
-
----
 
 ### Rule summary table
 
-| Code | Name                   | Tier | Configurable | Needs lookup | Default threshold |
-| ---- | ---------------------- | ---- | ------------ | ------------ | ----------------- |
-| R001 | UNKNOWN_AGENT          | 1    | No           | No           | —                 |
-| R002 | LOW_TRUST_SCORE        | 2    | Yes          | No           | score < 30        |
-| R003 | HIGH_VELOCITY_CHECKOUT | 2    | Yes          | Yes          | > 5 / 60s         |
-| R004 | PROMO_ABUSE            | 2    | Yes          | No           | > 5 codes         |
-| R005 | RETURN_ABUSE           | 2    | Yes          | Yes          | ratio > 0.5 / 90d |
-| R006 | CANCEL_POST_SHIP       | 2    | Yes          | Yes          | > 3 / 90d         |
-| R007 | AMOUNT_SPIKE           | 1    | No           | No           | OFAC or 5× avg    |
-| R008 | CATEGORY_DRIFT         | 2    | Yes          | Yes          | similarity < 0.4  |
-| R009 | DISPUTE_HISTORY        | 2    | Yes          | Yes          | > 2 / 30d         |
-| R010 | STRIPE_HIGH_RISK       | 2    | Yes          | Yes          | Radar = highest   |
+For full descriptions, configurable parameters, cart attribute dependencies, and integration examples see **[docs/agent-rules-reference.md](docs/agent-rules-reference.md)**.
+
+| Code  | Name                            | Function                                                               |
+| ----- | ------------------------------- | ---------------------------------------------------------------------- |
+| R001  | `verified-agent-required`       | Blocks checkout when no verified agent identity is present             |
+| R002  | `signature-spoof-block`         | Blocks invalid or unverifiable agent token signatures                  |
+| R003  | `mandate-boundary-match`        | Enforces operator mandate spending cap and category allowlist          |
+| R004  | `new-key-friction`              | Adds friction when a freshly-issued agent key is used                  |
+| R005  | `revoked-agent-block`           | Blocks revoked agents or those with repeated identity failures         |
+| R006  | `provider-confidence-tier`      | Enforces minimum trust score and provider confidence                   |
+| R007  | `cross-merchant-abuse-signal`   | Blocks agents flagged by 2+ merchants in the last 30 days             |
+| R008  | `scope-escalation-detection`    | Blocks requests that exceed merchant-authorized agent scopes           |
+| R009  | `agent-verification-required`   | Merchant-side mirror of R001 for catalog and session operations        |
+| R010  | `new-agent-probation`           | Requires a minimum number of prior completed orders                    |
+| R011  | `repeat-failed-checkout`        | Blocks agents exceeding failed checkout attempts in a time window      |
+| R012  | `high-risk-category`            | Blocks orders containing merchant-defined high-risk product categories |
+| R013  | `return-policy-guard`           | Blocks when agent return expectations conflict with merchant policy     |
+| R014  | `delivery-risk-guard`           | Blocks high-risk delivery countries and repeat post-ship cancellers    |
+| R015  | `price-change-guard`            | Blocks when cart price has shifted beyond an allowed delta             |
+| R016  | `stock-confidence-guard`        | Blocks when line-item stock falls below the required minimum           |
+| R017  | `coupon-discount-anomaly`       | Limits discount code attempts and maximum discount depth               |
+| R018  | `cart-composition-guard`        | Detects order spikes, item count abuse, and single-SKU quantity abuse  |
+| R019  | `country-jurisdiction`          | Restricts orders to allowed countries or blocks specific jurisdictions |
+| R020  | `business-hours`                | Restricts agentic orders to merchant business hours in local timezone  |
+| R021  | `first-purchase-with-merchant`  | Flags first-time agent purchases for review                            |
+| R022  | `payment-rail-restriction`      | Enforces an allowlist or blocklist of payment methods                  |
+| R023  | `refund-abuse-guard`            | Blocks agents with a high refund ratio in a rolling window             |
+| R024  | `dispute-history-guard`         | Blocks agents with too many payment disputes recently                  |
+| R025  | `sensitive-delivery-address`    | Blocks PO boxes and freight-forwarder addresses                        |
+| R026  | `subscription-autorenew-guard`  | Requires explicit consent before processing auto-renew charges         |
+| R027  | `gift-card-stored-value`        | Caps stored-value / gift-card purchase amounts per transaction         |
+| R028  | `b2b-po-guard`                  | Requires purchase-order evidence for B2B orders                        |
+| R029  | `merchant-preset`               | Applies one of four named risk presets (abierto/equilibrado/estricto/regulado) |
+| R030  | `simple-controls`               | Amount cap and country restriction without advanced evidence rails     |
+
+The internal Checkout Enforcement Layer also keeps legacy R001–R010 evaluators for existing merchants and plugin snapshots. New integrations should treat rule codes as opaque strings and use the current `get_agent_rules` output rather than hard-coding old names or assuming exactly ten rules.
 
 ---
 
@@ -536,7 +320,7 @@ sequenceDiagram
 
     Dev->>IDE: "Show me the agent enforcement rules"
     IDE->>MCP: get_agent_rules(filter="all")
-    MCP-->>IDE: R001–R010 with thresholds + examples
+    MCP-->>IDE: R001–R030 with thresholds + examples
     IDE-->>Dev: Full enforcement spec
 
     Dev->>IDE: "Generate a TypeScript integration"
@@ -552,7 +336,7 @@ sequenceDiagram
     IDE-->>Dev: api_key (valid 24h)
 
     Dev->>API: Test with sandbox key
-    API->>API: Evaluate R001–R010
+    API->>API: Evaluate R001–R030
     API-->>Dev: Checkout response
 ```
 
@@ -581,8 +365,8 @@ Resources are passive reference data readable by agents at any time.
 
 ## Transport modes
 
-| Mode              | Command                                                  | Use case                                               |
-| ----------------- | -------------------------------------------------------- | ------------------------------------------------------ |
+| Mode              | Command                                          | Use case                                               |
+| ----------------- | ------------------------------------------------ | ------------------------------------------------------ |
 | `stdio` (default) | `npx @trusteed/developer-mcp`                    | Claude Desktop, Cursor, VS Code — one process per host |
 | `HTTP`            | `npx @trusteed/developer-mcp --http --port=3100` | Remote deployment, multiple clients, CI pipelines      |
 
