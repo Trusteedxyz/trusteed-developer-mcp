@@ -10,14 +10,83 @@ versioning follows [SemVer](https://semver.org/).
 > production artifacts. Treat every entry below as documentation surface
 > changes, not behaviour changes in the platform.
 
-## Unreleased — Extension Marketplace docs surface
+## Unreleased — Rule catalog expansion + Extension Marketplace docs surface
 
-Adds three read-only tools that explain the Trusteed Extension Marketplace
-contracts (manifest schema, webhook envelope + per-event payloads, scope
-catalog) directly inside an IDE. Tool count goes **7 → 10**. The new tools
-are documentation snapshots with canonical-URL pointers — they are not
-runtime validators. Proposed SemVer bump on release: **0.2.0** (additive,
-non-breaking).
+Expands `get_agent_rules` from R001–R010 to the full **R001–R030** catalog
+and adds three read-only tools that explain the Trusteed Extension
+Marketplace contracts. Tool count goes **7 → 10**. All additions are
+documentation surface changes — they do not execute commerce actions and do
+not modify tenant state. Proposed SemVer bump on release: **0.2.0**
+(additive, non-breaking).
+
+### Added — rule catalog (R011–R030)
+
+The original 0.1.0 release shipped `get_agent_rules` with ten rules
+(R001–R010 legacy codes). The catalog now contains **30 canonical rules**
+with slug codes, configurable thresholds, historical-lookup dependencies,
+and evaluation-phase metadata.
+
+**New rules — high-priority merchant controls (R011–R018)**
+
+| Code | Slug                       | What it catches                                          |
+| ---- | -------------------------- | -------------------------------------------------------- |
+| R011 | `repeat-failed-checkout`   | Agents exceeding failed checkout attempts in a window    |
+| R012 | `high-risk-category`       | Orders containing merchant-defined high-risk categories  |
+| R013 | `return-policy-guard`      | Agent return expectation vs. merchant final-sale policy  |
+| R014 | `delivery-risk-guard`      | High-risk countries and repeat post-ship cancellers      |
+| R015 | `price-change-guard`       | Cart price shift beyond allowed basis-point delta        |
+| R016 | `stock-confidence-guard`   | Line-item stock below required minimum at checkout       |
+| R017 | `coupon-discount-anomaly`  | Discount code probe count and maximum discount depth     |
+| R018 | `cart-composition-guard`   | Order spikes, item count abuse, single-SKU quantity runs |
+
+**New rules — medium-priority controls (R019–R028)**
+
+| Code | Slug                          | What it catches                                          |
+| ---- | ----------------------------- | -------------------------------------------------------- |
+| R019 | `country-jurisdiction`        | Orders outside geographic allowlist / inside blocklist   |
+| R020 | `business-hours`              | Agentic orders placed outside local business hours       |
+| R021 | `first-purchase-with-merchant`| First-time agent purchases requiring review              |
+| R022 | `payment-rail-restriction`    | Payment methods outside merchant allowlist or blocklist  |
+| R023 | `refund-abuse-guard`          | Refund ratio above threshold in rolling window           |
+| R024 | `dispute-history-guard`       | Formal chargebacks above limit in rolling window         |
+| R025 | `sensitive-delivery-address`  | PO boxes and freight-forwarder delivery addresses        |
+| R026 | `subscription-autorenew-guard`| Auto-renew charges without explicit consent capture      |
+| R027 | `gift-card-stored-value`      | Stored-value / gift-card amounts exceeding cap           |
+| R028 | `b2b-po-guard`                | B2B orders missing purchase-order evidence               |
+
+**New rules — control plane (R029–R030)**
+
+| Code | Slug               | What it does                                                    |
+| ---- | ------------------ | --------------------------------------------------------------- |
+| R029 | `merchant-preset`  | Applies one of four named presets (abierto/equilibrado/estricto/regulado) |
+| R030 | `simple-controls`  | Amount cap and country restriction without advanced evidence     |
+
+All R011–R030 rules are returned by `get_agent_rules` with the same
+structure as R001–R010: `code`, `slug`, `category`, `tier`, `severity`,
+`evaluation_phase`, `description`, `default_action`, `configurable_params`,
+`evidence_expectations`, and `examples`. Historical-lookup rules (R011,
+R014, R021, R023, R024) return a `needs_lookup: true` flag — use
+`filter="needs_lookup"` or `filter="no_lookup"` to scope evaluation
+environments that cannot make server-side calls.
+
+### Added — docs
+
+- **`docs/agent-rules-reference.md`** — standalone reference for all 30
+  rules, linked from the README. Covers: configurable parameters per rule,
+  cart-attribute dependency table (27 attributes across 30 rules), example
+  `merchantPolicies` payloads, the offline-enforcement snapshot endpoint,
+  and a tier matrix (Tier 1 kill-switch / Tier 2 standard / needs server
+  lookup) for all 30 rules.
+
+### Changed — docs
+
+- **`README.md`** Rule summary table replaced: the previous four-row
+  range summary (R001–R008 / R009–R018 / R019–R028 / R029–R030) is now
+  a 30-row per-rule table with code, canonical slug, and one-line function
+  description. The table links to `docs/agent-rules-reference.md` for full
+  details.
+- Architecture diagram label updated: `R001–R010` references replaced with
+  `R001–R030` where they appeared in rule-count and mermaid annotations.
 
 ### Added — tools
 
