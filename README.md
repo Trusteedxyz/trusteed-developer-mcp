@@ -15,7 +15,7 @@ Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No auth
 This server is intentionally narrow. Do **not** use it for:
 
 - **Production authorisation decisions.** The `get_agent_rules` output describes how R001–R030 _work_; it does not _execute_ them. Call `POST /api/v1/rules/evaluate` (or fetch the signed RuleSnapshot for offline enforcement) for any real allow/block decision.
-- **Storing or rotating secrets.** Never paste long-lived API keys, merchant credentials, or production tokens into prompts that reach this MCP. Sandbox keys returned by `create_sandbox_key` are designed to be disposable (24 h, max 3 per IP / 24 h).
+- **Storing or rotating secrets.** Never paste long-lived API keys, merchant credentials, or production tokens into prompts that reach this MCP. Sandbox keys returned by `create_sandbox_key` are designed to be disposable (24 h TTL); rate limits are enforced server-side.
 - **Handling PCI, PII, or payment data.** The tools return documentation, schemas, and configuration metadata only. No PAN, PII, or order content flows through this server.
 - **Compliance attestation.** LLM-generated explanations of the trust framework or rule semantics are not legally binding. Use the canonical sources (the [trust methodology page](https://www.trusteed.xyz/trust/methodology), the [agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json), the OpenAPI spec) for any compliance, audit, or legal review.
 - **High-volume programmatic access.** HTTP mode is rate-limited (100 req / 15 min / IP). For bulk documentation ingest, mirror the OpenAPI and Markdown sources directly from the public site or repo.
@@ -167,7 +167,7 @@ Step-by-step integration guide with working code for a specific framework.
 
 ### `create_sandbox_key`
 
-Generates a temporary 24-hour API key for testing without registering. Max 3 keys per IP per 24h.
+Generates a temporary 24-hour API key for testing without registering. Rate limits are enforced server-side.
 
 No parameters.
 

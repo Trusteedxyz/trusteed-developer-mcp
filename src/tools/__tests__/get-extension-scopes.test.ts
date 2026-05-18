@@ -1,35 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGetExtensionScopes } from "../get-extension-scopes.js";
-
-interface ScopeOutput {
-  last_updated: string;
-  total_scopes: number;
-  minimum_principle: string;
-  scopes: Array<{
-    scope: string;
-    purpose: string;
-    data_classification: "public" | "operational" | "sensitive" | "pii";
-    pii: boolean;
-    raises_risk_category_to: "low" | "medium" | "high";
-    example_use_case: string;
-    not_for: string;
-  }>;
-}
-
-interface ToolHandler {
-  (
-    args: Record<string, unknown>,
-    extra: Record<string, unknown>
-  ): Promise<{
-    content: Array<{ type: string; text: string }>;
-    structuredContent: ScopeOutput;
-  }>;
-}
-
-interface RegisteredTools {
-  [name: string]: { handler: ToolHandler };
-}
+import { getRegisteredHandler } from "./test-utils.js";
 
 const TEST_CONFIG = {
   name: "Test Dev MCP",
@@ -37,26 +9,20 @@ const TEST_CONFIG = {
   baseUrl: "https://api.test.local",
 } as const;
 
-function buildHandler(): ToolHandler {
+function buildHandler() {
   const server = new McpServer({
     name: TEST_CONFIG.name,
     version: TEST_CONFIG.version,
   });
   registerGetExtensionScopes(server, TEST_CONFIG);
-  const tools = (server as unknown as { _registeredTools: RegisteredTools })
-    ._registeredTools;
-  const handler = tools["get_extension_scopes"]?.handler;
-  if (!handler) throw new Error("get_extension_scopes not registered");
-  return handler;
+  return getRegisteredHandler(server, "get_extension_scopes");
 }
 
 describe("get_extension_scopes (developer-mcp)", () => {
   it("registers under the expected tool name", () => {
     const server = new McpServer({ name: "t", version: "0" });
     registerGetExtensionScopes(server, TEST_CONFIG);
-    const tools = (server as unknown as { _registeredTools: RegisteredTools })
-      ._registeredTools;
-    expect(Object.keys(tools)).toContain("get_extension_scopes");
+    expect(() => getRegisteredHandler(server, "get_extension_scopes")).not.toThrow();
   });
 
   it("returns 12 scopes covering events/agents/checkouts/customers/rules/config", async () => {
@@ -66,7 +32,7 @@ describe("get_extension_scopes (developer-mcp)", () => {
     expect(result.structuredContent.total_scopes).toBe(12);
     expect(result.structuredContent.scopes).toHaveLength(12);
 
-    const scopeNames = result.structuredContent.scopes.map((s) => s.scope);
+    const scopeNames = result.structuredContent.scopes.map((s: any) => s.scope);
     expect(scopeNames).toEqual(
       expect.arrayContaining([
         "events:subscribe:checkout",
@@ -89,7 +55,7 @@ describe("get_extension_scopes (developer-mcp)", () => {
     const handler = buildHandler();
     const result = await handler({}, {});
 
-    const pii = result.structuredContent.scopes.filter((s) => s.pii);
+    const pii = result.structuredContent.scopes.filter((s: any) => s.pii);
     expect(pii).toHaveLength(1);
     expect(pii[0]?.scope).toBe("customers:read:pii");
     expect(pii[0]?.data_classification).toBe("pii");

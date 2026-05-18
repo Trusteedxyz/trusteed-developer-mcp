@@ -66,14 +66,14 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 
 ### R004 · `new-key-friction`
 
-**Function:** Adds friction when an agent uses a key that was issued fewer than `maxKeyAgeHours` hours ago. Prevents freshly-minted keys from bypassing warming signals.
+**Function:** Adds friction (requires explicit user confirmation) when a freshly-issued agent key is used for the first time. Key age is measured from the JWT `iat` claim or first-seen timestamp.
 
-**Default action:** BLOCK  
-**Configurable:** `maxKeyAgeHours` (default 24 h)  
+**Default action:** FRICTION (require_confirmation)  
+**Configurable:** `minKeyAgeSeconds` (default 300 s), `frictionAction` (`require_confirmation` | `block`)  
 **Depends on:** `_agent_key_age_hours` cart attribute
 
 ```jsonc
-{ "r004": { "maxKeyAgeHours": 48 } }
+{ "r004": { "minKeyAgeSeconds": 600, "frictionAction": "block" } }
 ```
 
 ---
@@ -142,25 +142,25 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Function:** Requires the agent to have at least `minCompletedOrders` prior completed orders with this merchant before proceeding. First-time agents go through probation.
 
 **Default action:** BLOCK  
-**Configurable:** `minCompletedOrders` (default 1)  
+**Configurable:** `minCompletedOrders` (default 3)  
 **Depends on:** `completedOrderCount` historical lookup or `_completed_orders` cart attribute
 
 ```jsonc
-{ "r010": { "minCompletedOrders": 3 } }
+{ "r010": { "minCompletedOrders": 5 } }
 ```
 
 ---
 
 ### R011 · `repeat-failed-checkout`
 
-**Function:** Blocks agents that have exceeded `maxAttempts` failed checkout attempts within `windowSeconds`. Protects against brute-force checkout probing.
+**Function:** Blocks agents that have exceeded `maxFailures` failed checkout attempts within `windowSeconds`. Protects against brute-force checkout probing.
 
 **Default action:** BLOCK  
-**Configurable:** `windowSeconds` (default 300 s), `maxAttempts` (default 3)  
+**Configurable:** `windowSeconds` (default 3600 s), `maxFailures` (default 5)  
 **Depends on:** `failedCheckoutCount` or `velocityCount` historical lookup
 
 ```jsonc
-{ "r011": { "windowSeconds": 120, "maxAttempts": 5 } }
+{ "r011": { "windowSeconds": 1800, "maxFailures": 3 } }
 ```
 
 ---

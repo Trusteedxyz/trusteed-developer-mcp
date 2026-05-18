@@ -1,15 +1,12 @@
 import { defineConfig } from "vitest/config";
-import { baseConfig } from "../../vitest.config.base";
 
 export default defineConfig({
-  ...baseConfig,
   test: {
-    ...baseConfig.test,
     name: "developer-mcp",
     environment: "node",
     passWithNoTests: true,
     coverage: {
-      ...(baseConfig.test?.coverage as any),
+      provider: "v8",
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "node_modules/",
@@ -20,6 +17,6 @@ export default defineConfig({
         "**/*.spec.ts",
         "src/index.ts",
       ],
-    } as any,
+    },
   },
 });

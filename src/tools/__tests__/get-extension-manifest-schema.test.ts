@@ -1,35 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGetExtensionManifestSchema } from "../get-extension-manifest-schema.js";
-
-interface ToolHandler {
-  (
-    args: Record<string, unknown>,
-    extra: Record<string, unknown>
-  ): Promise<{
-    content: Array<{ type: string; text: string }>;
-    structuredContent: {
-      schema_version: string;
-      last_updated: string;
-      canonical_url: string;
-      required_fields: string[];
-      field_guide: Record<
-        string,
-        { type: string; constraint: string; notes: string }
-      >;
-      signing: {
-        envelope: string;
-        signed_by: string[];
-        canonicalization: string;
-        verification: string;
-      };
-    };
-  }>;
-}
-
-interface RegisteredTools {
-  [name: string]: { handler: ToolHandler };
-}
+import { getRegisteredHandler } from "./test-utils.js";
 
 const TEST_CONFIG = {
   name: "Test Dev MCP",
@@ -37,26 +9,22 @@ const TEST_CONFIG = {
   baseUrl: "https://api.test.local",
 } as const;
 
-function buildHandler(): ToolHandler {
+function buildHandler() {
   const server = new McpServer({
     name: TEST_CONFIG.name,
     version: TEST_CONFIG.version,
   });
   registerGetExtensionManifestSchema(server, TEST_CONFIG);
-  const tools = (server as unknown as { _registeredTools: RegisteredTools })
-    ._registeredTools;
-  const handler = tools["get_extension_manifest_schema"]?.handler;
-  if (!handler) throw new Error("get_extension_manifest_schema not registered");
-  return handler;
+  return getRegisteredHandler(server, "get_extension_manifest_schema");
 }
 
 describe("get_extension_manifest_schema (developer-mcp)", () => {
   it("registers under the expected tool name", () => {
     const server = new McpServer({ name: "t", version: "0" });
     registerGetExtensionManifestSchema(server, TEST_CONFIG);
-    const tools = (server as unknown as { _registeredTools: RegisteredTools })
-      ._registeredTools;
-    expect(Object.keys(tools)).toContain("get_extension_manifest_schema");
+    expect(() =>
+      getRegisteredHandler(server, "get_extension_manifest_schema")
+    ).not.toThrow();
   });
 
   it("returns schema_version 1.0 and canonical URL", async () => {
@@ -99,7 +67,7 @@ describe("get_extension_manifest_schema (developer-mcp)", () => {
     const result = await handler({}, {});
 
     for (const [name, info] of Object.entries(
-      result.structuredContent.field_guide
+      result.structuredContent.field_guide as Record<string, any>
     )) {
       expect(info.type, `field ${name} missing type`).toBeTruthy();
       expect(info.constraint, `field ${name} missing constraint`).toBeTruthy();

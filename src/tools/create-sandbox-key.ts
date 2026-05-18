@@ -24,7 +24,7 @@ export function registerCreateSandboxKey(
     "create_sandbox_key",
     {
       description:
-        "Generate a temporary sandbox API key for testing Trusteed without registering. Key valid for 24 hours, max 3 keys per IP per 24h. Perfect for evaluating the platform and running quick demos.",
+        "Generate a temporary sandbox API key for testing Trusteed without registering. Key valid for 24 hours. Rate limits are enforced server-side. Perfect for evaluating the platform and running quick demos.",
       inputSchema: {},
       outputSchema: createSandboxKeyOutputSchema,
     },
@@ -32,10 +32,18 @@ export function registerCreateSandboxKey(
       const apiBaseUrl = config.baseUrl;
 
       try {
-        const response = await fetch(`${apiBaseUrl}/api/v1/sandbox/key`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10_000);
+        let response: Response;
+        try {
+          response = await fetch(`${apiBaseUrl}/api/v1/sandbox/key`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
         if (!response.ok) {
           const error = await response.text();
@@ -84,7 +92,6 @@ curl -X POST ${apiBaseUrl}/api/v1/agent/search \\
 **Limits:**
 - Valid: ${hoursRemaining} hours
 - Rate limit: 20 requests/min (FREE tier)
-- Max 3 keys per IP per 24h
 
 **Next steps:**
 - Read docs at https://www.trusteed.xyz/en/developers
@@ -108,10 +115,11 @@ curl -X POST ${apiBaseUrl}/api/v1/agent/search \\
         const message =
           error instanceof Error ? error.message : "Unknown error";
         return {
+          isError: true,
           content: [
             {
               type: "text" as const,
-              text: `❌ Failed to generate sandbox key: ${message}\n\nTroubleshooting:\n- Check your internet connection\n- Rate limit? Wait 1 hour and try again (max 3 keys per IP per 24h)\n- For production keys, register at https://www.trusteed.xyz/register`,
+              text: `❌ Failed to generate sandbox key: ${message}\n\nTroubleshooting:\n- Check your internet connection\n- Rate limit? Wait and try again\n- For production keys, register at https://www.trusteed.xyz/register`,
             },
           ],
           structuredContent: {

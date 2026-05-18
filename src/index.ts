@@ -142,9 +142,17 @@ async function startHttp(): Promise<void> {
       // Set CORS headers
       res.setHeader("Access-Control-Allow-Origin", "*");
 
-      // Read body
+      // Read body (max 256 KB — MCP requests are never large)
+      const MAX_BODY_BYTES = 256 * 1024;
       const chunks: Buffer[] = [];
+      let totalBytes = 0;
       for await (const chunk of req) {
+        totalBytes += (chunk as Buffer).length;
+        if (totalBytes > MAX_BODY_BYTES) {
+          res.writeHead(413, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Request body too large (max 256 KB)" }));
+          return;
+        }
         chunks.push(chunk as Buffer);
       }
       const body = Buffer.concat(chunks).toString("utf-8");
@@ -163,8 +171,12 @@ async function startHttp(): Promise<void> {
         sessionIdGenerator: undefined, // stateless — no sessions
       });
 
-      await mcpServer.connect(transport);
-      await transport.handleRequest(req, res, parsedBody);
+      try {
+        await mcpServer.connect(transport);
+        await transport.handleRequest(req, res, parsedBody);
+      } finally {
+        await transport.close();
+      }
     }
   );
 

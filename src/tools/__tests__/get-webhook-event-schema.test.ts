@@ -1,37 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerGetWebhookEventSchema } from "../get-webhook-event-schema.js";
-
-interface EventDetail {
-  event_type: string;
-  scope_required: string;
-  description: string;
-}
-
-interface EnvelopeOutput {
-  envelope_version: string;
-  canonical_url: string;
-  last_updated: string;
-  scope: "envelope" | "event";
-  envelope_fields?: Record<string, { type: string; notes: string }>;
-  event?: EventDetail;
-  signature?: { canonical_base_string: string; freshness_window: string };
-  delivery?: { retry_schedule: string[]; dlq_after_attempts: number };
-}
-
-interface ToolHandler {
-  (
-    args: Record<string, unknown>,
-    extra: Record<string, unknown>
-  ): Promise<{
-    content: Array<{ type: string; text: string }>;
-    structuredContent: EnvelopeOutput;
-  }>;
-}
-
-interface RegisteredTools {
-  [name: string]: { handler: ToolHandler };
-}
+import { getRegisteredHandler } from "./test-utils.js";
 
 const TEST_CONFIG = {
   name: "Test Dev MCP",
@@ -39,26 +9,22 @@ const TEST_CONFIG = {
   baseUrl: "https://api.test.local",
 } as const;
 
-function buildHandler(): ToolHandler {
+function buildHandler() {
   const server = new McpServer({
     name: TEST_CONFIG.name,
     version: TEST_CONFIG.version,
   });
   registerGetWebhookEventSchema(server, TEST_CONFIG);
-  const tools = (server as unknown as { _registeredTools: RegisteredTools })
-    ._registeredTools;
-  const handler = tools["get_webhook_event_schema"]?.handler;
-  if (!handler) throw new Error("get_webhook_event_schema not registered");
-  return handler;
+  return getRegisteredHandler(server, "get_webhook_event_schema");
 }
 
 describe("get_webhook_event_schema (developer-mcp)", () => {
   it("registers under the expected tool name", () => {
     const server = new McpServer({ name: "t", version: "0" });
     registerGetWebhookEventSchema(server, TEST_CONFIG);
-    const tools = (server as unknown as { _registeredTools: RegisteredTools })
-      ._registeredTools;
-    expect(Object.keys(tools)).toContain("get_webhook_event_schema");
+    expect(() =>
+      getRegisteredHandler(server, "get_webhook_event_schema")
+    ).not.toThrow();
   });
 
   it("returns envelope structure when no event_type is given", async () => {

@@ -9,8 +9,14 @@
   "bin": {
     "trusteed-dev-mcp": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepack": "npm run build",
     "dev": "tsc --watch",
     "start": "node dist/index.js",
     "start:http": "node dist/index.js --http",
@@ -23,6 +29,8 @@
     "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@typescript-eslint/parser": "^8.59.4",
+    "eslint": "^9.39.4",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"
   },

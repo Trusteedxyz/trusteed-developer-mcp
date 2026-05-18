@@ -37,7 +37,7 @@ export interface DeveloperMCPServerConfig {
 
 const DEFAULT_CONFIG: Required<DeveloperMCPServerConfig> = {
   name: "Trusteed Developer MCP",
-  version: "1.0.0",
+  version: "0.1.0",
   baseUrl: "https://www.trusteed.xyz",
 };
 

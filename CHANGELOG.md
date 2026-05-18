@@ -10,6 +10,98 @@ versioning follows [SemVer](https://semver.org/).
 > production artifacts. Treat every entry below as documentation surface
 > changes, not behaviour changes in the platform.
 
+## Unreleased — Infrastructure hardening + test quality
+
+Corrects critical packaging regressions introduced when this package was
+extracted from the monorepo, closes HTTP-mode operational risks, fixes
+documentation drift, and decouples tests from a private SDK internal.
+No new tools or user-facing behaviour changes. Proposed SemVer bump on
+release: included in **0.2.0** (bundled with the rule catalog expansion
+below).
+
+### Fixed — critical packaging (the package was not buildable or publishable)
+
+- `tsconfig.json` rewired as a standalone config: dropped `extends
+  ../../tsconfig.base.json` and `references` to `../shared` / `../database`
+  (those paths do not exist outside the monorepo). Replaced with an
+  equivalent self-contained `compilerOptions` block so `tsc`, `tsc --noEmit`,
+  and `tsc --watch` work from this directory without any parent.
+- `vitest.config.ts` rewired as a standalone config: dropped `import {
+  baseConfig } from "../../vitest.config.base"`. Inline `test.*` options now
+  cover the same coverage exclusions.
+- `eslint` and `@typescript-eslint/parser` added to `devDependencies`
+  (`eslint@^9`, `@typescript-eslint/parser@^8`). The `lint` script was
+  previously broken — the executables were never installed.
+
+### Fixed — critical packaging (npx would silently install a broken package)
+
+- `"files"` field added to `package.json`: `["dist/", "README.md",
+  "CHANGELOG.md"]`. Without it `npm pack` / `npm publish` would include
+  everything in the repo root, and `npx` users depending on `dist/` would
+  get no entrypoint because `dist/` is git-ignored.
+- `"prepack": "npm run build"` added to `package.json` so `dist/` is always
+  rebuilt before `npm pack` / `npm publish`. No more stale or absent dist.
+
+### Fixed — HTTP mode operational risks
+
+- **Body size limit**: HTTP handler now rejects requests larger than 256 KB
+  with `413 Request Entity Too Large` before buffering any data. Previously
+  the handler buffered without limit, allowing OOM on adversarial payloads.
+- **Transport leak**: `StreamableHTTPServerTransport` is now closed in a
+  `try/finally` block after `handleRequest`. Previously each request created
+  a transport that was never explicitly closed, accumulating handles under
+  load.
+
+### Fixed — `create_sandbox_key` correctness
+
+- `isError: true` added to error-path responses. Automated MCP clients
+  treating the structured response as success would previously receive
+  `api_key: ""` with no error signal.
+- `AbortController` with a 10-second timeout added to `fetch`. Upstream
+  hangs previously held the request open indefinitely.
+- Tool description and narration no longer promise "max 3 keys per IP per
+  24h" — this limit is enforced server-side and cannot be tracked from the
+  MCP server (especially in stdio mode where there is no client IP).
+
+### Fixed — documentation drift
+
+- `docs/agent-rules-reference.md` synchronized with the code (source of
+  truth for defaults):
+  - **R004** `new-key-friction`: default action is `FRICTION
+    (require_confirmation)`, configurable via `minKeyAgeSeconds` (default
+    300 s). Docs previously said `BLOCK` with `maxKeyAgeHours` (24 h).
+  - **R010** `new-agent-probation`: `minCompletedOrders` default is `3`.
+    Docs previously said `1`.
+  - **R011** `repeat-failed-checkout`: defaults are `windowSeconds: 3600`,
+    `maxFailures: 5`. Docs previously said `windowSeconds: 300`,
+    `maxAttempts: 3`.
+- `SDK-FEATURES-ADOPTED.md`: tool count corrected from 5 to 10; package
+  name corrected from `@agenticmcpstores/developer-mcp` to
+  `@trusteed/developer-mcp`.
+- `src/server.ts`: `DEFAULT_CONFIG.version` corrected from `"1.0.0"` to
+  `"0.1.0"` to match `package.json`. MCP clients were seeing a version
+  mismatch.
+- `README.md`: "max 3 keys per IP per 24h" claim removed from the
+  `create_sandbox_key` section and the "When NOT to use" section; replaced
+  with "rate limits are enforced server-side."
+
+### Fixed — test quality (LOW severity, #8)
+
+- New `src/tools/__tests__/test-utils.ts` exports `getRegisteredHandler(server,
+  toolName)`, centralizing the single access point to the private SDK field
+  `_registeredTools`. All 5 test files updated to use this helper; the
+  `RegisteredTools` interface and duplicate casts are removed from each.
+- `create-sandbox-key.test.ts`: error-path tests now assert `isError === true`.
+- `get-agent-rules.test.ts`: counts and tier assertions corrected to match
+  the current 30-rule catalog (tier1 = R001, R002, R005; not R001, R007).
+  `AMOUNT_SPIKE` assertion removed (the string does not appear in any rule).
+
+### Result
+
+`tsc --noEmit` → clean. `vitest run` → 39/39 green.
+
+---
+
 ## Unreleased — Rule catalog expansion + Extension Marketplace docs surface
 
 Expands `get_agent_rules` from R001–R010 to the full **R001–R030** catalog

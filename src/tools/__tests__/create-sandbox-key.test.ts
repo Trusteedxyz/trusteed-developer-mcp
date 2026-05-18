@@ -13,26 +13,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerCreateSandboxKey } from "../create-sandbox-key.js";
-
-interface ToolHandler {
-  (
-    args: Record<string, unknown>,
-    extra: Record<string, unknown>
-  ): Promise<{
-    content: Array<{ type: string; text: string }>;
-    structuredContent: {
-      api_key: string;
-      expires_at: string;
-      base_url: string;
-      rate_limit: string;
-      notes: string;
-    };
-  }>;
-}
-
-interface RegisteredTools {
-  [name: string]: { handler: ToolHandler };
-}
+import { getRegisteredHandler } from "./test-utils.js";
 
 const TEST_CONFIG = {
   name: "Test Dev MCP",
@@ -40,21 +21,13 @@ const TEST_CONFIG = {
   baseUrl: "https://api.test.local",
 } as const;
 
-function buildServerWithTool(): {
-  server: McpServer;
-  handler: ToolHandler;
-} {
+function buildHandler() {
   const server = new McpServer({
     name: TEST_CONFIG.name,
     version: TEST_CONFIG.version,
   });
   registerCreateSandboxKey(server, TEST_CONFIG);
-
-  const tools = (server as unknown as { _registeredTools: RegisteredTools })
-    ._registeredTools;
-  expect(tools["create_sandbox_key"]).toBeDefined();
-
-  return { server, handler: tools["create_sandbox_key"]!.handler };
+  return getRegisteredHandler(server, "create_sandbox_key");
 }
 
 const originalFetch = globalThis.fetch;
@@ -69,10 +42,12 @@ afterEach(() => {
 
 describe("create_sandbox_key", () => {
   it("registers under the expected tool name", () => {
-    const { server } = buildServerWithTool();
-    const tools = (server as unknown as { _registeredTools: RegisteredTools })
-      ._registeredTools;
-    expect(Object.keys(tools)).toContain("create_sandbox_key");
+    const server = new McpServer({
+      name: TEST_CONFIG.name,
+      version: TEST_CONFIG.version,
+    });
+    registerCreateSandboxKey(server, TEST_CONFIG);
+    expect(() => getRegisteredHandler(server, "create_sandbox_key")).not.toThrow();
   });
 
   it("returns structuredContent with api_key + base_url on HTTP 200", async () => {
@@ -88,7 +63,7 @@ describe("create_sandbox_key", () => {
     );
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 
-    const { handler } = buildServerWithTool();
+    const handler = buildHandler();
     const result = await handler({}, {});
 
     expect(fetchSpy).toHaveBeenCalledWith(
@@ -102,28 +77,30 @@ describe("create_sandbox_key", () => {
     expect(result.content[0]?.text).toContain("sandbox_test_abc");
   });
 
-  it("returns graceful error narration when upstream returns non-2xx", async () => {
+  it("returns isError=true when upstream returns non-2xx", async () => {
     const fetchSpy = vi
       .fn()
       .mockResolvedValue(new Response("rate limited", { status: 429 }));
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 
-    const { handler } = buildServerWithTool();
+    const handler = buildHandler();
     const result = await handler({}, {});
 
+    expect((result as { isError?: boolean }).isError).toBe(true);
     expect(result.structuredContent.api_key).toBe("");
     expect(result.structuredContent.notes).toContain("Error:");
     expect(result.content[0]?.text).toContain("Failed to generate sandbox key");
     expect(result.content[0]?.text).toContain("429");
   });
 
-  it("returns graceful error narration when fetch rejects (network failure)", async () => {
+  it("returns isError=true when fetch rejects (network failure)", async () => {
     const fetchSpy = vi.fn().mockRejectedValue(new Error("ECONNREFUSED"));
     globalThis.fetch = fetchSpy as typeof globalThis.fetch;
 
-    const { handler } = buildServerWithTool();
+    const handler = buildHandler();
     const result = await handler({}, {});
 
+    expect((result as { isError?: boolean }).isError).toBe(true);
     expect(result.structuredContent.api_key).toBe("");
     expect(result.structuredContent.notes).toContain("ECONNREFUSED");
     expect(result.content[0]?.text).toContain("Failed to generate sandbox key");

@@ -12,13 +12,18 @@
 
 **Que es:** Los tools MCP ahora pueden retornar tanto `content` (texto markdown para el LLM) como `structuredContent` (JSON tipado para uso programatico).
 
-**Donde lo usamos:** En los 5 tools del Developer MCP:
+**Donde lo usamos:** En los 10 tools del Developer MCP:
 
 - `search_docs` → structuredContent con array de {id, section, title, relevance}
 - `get_openapi_schema` → structuredContent con {resource, schema}
 - `get_integration_guide` → structuredContent con {framework, install, code, nextSteps}
 - `get_trust_framework` → structuredContent con {components, rankingFormula, merchantStates}
 - `get_protocol_info` → structuredContent con {protocols: [{id, name, status, adapter}]}
+- `get_agent_rules` → structuredContent con {rules: [{code, name, tier, action, ...}]}
+- `create_sandbox_key` → structuredContent con {api_key, expires_at, base_url, rate_limit}
+- `get_extension_manifest_schema` → structuredContent con {schema_version, required_fields, field_guide}
+- `get_webhook_event_schema` → structuredContent con {envelope_version, scope, envelope_fields}
+- `get_extension_scopes` → structuredContent con {scopes: [{scope, purpose, data_classification}]}
 
 **Impacto competitivo:** commercetools Commerce MCP retorna JSON transformable a tabular. Nosotros retornamos markdown legible + JSON estructurado. Los agent frameworks (LangChain, Vercel AI) pueden consumir el JSON directamente sin parsear markdown.
 
@@ -43,7 +48,7 @@ return {
 annotations: { readOnlyHint: true, destructiveHint: false }
 ```
 
-**Accion futura:** Migrar a SDK v2 import paths cuando sea estable, agregar annotations a los 5 tools.
+**Accion futura:** Migrar a SDK v2 import paths cuando sea estable, agregar annotations a los 10 tools.
 
 ### 3. Dual Transport (stdio + Streamable HTTP)
 
@@ -51,8 +56,8 @@ annotations: { readOnlyHint: true, destructiveHint: false }
 
 **Donde lo usamos:** En `index.ts` con flag `--http`:
 
-- **stdio** (default): `npx @agenticmcpstores/developer-mcp` — para Claude Desktop, Cursor, VS Code
-- **HTTP**: `npx @agenticmcpstores/developer-mcp --http --port=3100` — para deployment publico
+- **stdio** (default): `npx @trusteed/developer-mcp` — para Claude Desktop, Cursor, VS Code
+- **HTTP**: `npx @trusteed/developer-mcp --http --port=3100` — para deployment publico
 
 **Implementacion:** HTTP usa Node.js `createServer` nativo (sin Express/Fastify) para minimas dependencias. Modo stateless: un server+transport por request.
 
@@ -100,7 +105,7 @@ annotations: { readOnlyHint: true, destructiveHint: false }
 
 | Novedad           | Adoptada  | Donde                     | Razon                               |
 | ----------------- | --------- | ------------------------- | ----------------------------------- |
-| structuredContent | SI        | 5 tools Developer MCP     | Ventaja competitiva: dual output    |
+| structuredContent | SI        | 10 tools Developer MCP    | Ventaja competitiva: dual output    |
 | Tool Annotations  | PREPARADO | Cuando SDK v2             | v1 API no lo soporta nativo         |
 | Dual Transport    | SI        | index.ts (stdio + HTTP)   | Maxima compatibilidad IDE           |
 | MCP Apps (UI)     | DIFERIDO  | Post-SK-1                 | Experimental, sin soporte universal |
