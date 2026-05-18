@@ -384,6 +384,31 @@ HTTP mode is stateless (one server per request). CORS is open (`*`). Rate limit:
 
 ---
 
+## Acknowledgements
+
+This MCP server exposes integrations built on top of the following external protocols and platforms. These are infrastructure dependencies, not formal collaborators, but they make the agentic commerce layer possible.
+
+| Partner | Role | Integration |
+| ------- | ---- | ----------- |
+| [Stripe](https://stripe.com) | Fiat payment infrastructure | ACP protocol (OpenAI/Stripe checkout sessions); R011 repeat-failed-checkout uses Stripe Radar risk signals when the payment method is Stripe |
+| [OpenAI](https://openai.com) | ACP protocol co-author | Agentic Commerce Protocol (ACP) for agent-mediated fiat payments |
+| [Google](https://developers.google.com) | AP2 protocol | Agent Payment Protocol v2 — Google Cart Mandate for agent-mediated payments |
+| [Coinbase](https://www.coinbase.com/developer-platform) | x402 stablecoin rail | USDC payment infrastructure for the x402 protocol |
+| [Cloudflare](https://cloudflare.com) | x402 co-author | x402 open standard for HTTP-native stablecoin payments |
+| [Anthropic / MCP](https://modelcontextprotocol.io) | Transport protocol | Model Context Protocol SDK (`@modelcontextprotocol/sdk`) |
+
+**Higher-assurance integrations** (available in the Trusteed platform for merchants who opt in, not required by default):
+
+| Partner | Role |
+| ------- | ---- |
+| [HUMAN Security](https://www.humansecurity.com) | Agent identity verification via AgenticTrust — RFC 9421 HTTP Message Signatures for buyer agents |
+| Visa (TAP) | Trusted Agent Protocol — `agent-browser-auth` / `agent-payer-auth` signature tags for Visa-verified agents |
+| [InfoCert (QTSP)](https://infocert.eu) | eIDAS-qualified electronic signatures and timestamps for trust receipts |
+
+These higher-assurance integrations are gated by merchant configuration and are not invoked by this documentation MCP server. See the platform trust methodology for details.
+
+---
+
 ## License
 
 MIT
