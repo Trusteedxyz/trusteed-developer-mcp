@@ -1,3 +1,5 @@
+[**English**](README.md) | [Español](README.es.md) | [Français](README.fr.md) | [Deutsch](README.de.md)
+
 # @trusteed/developer-mcp
 
 **Integration assistant for the [Trusteed](https://www.trusteed.xyz) merchant-side agent policy, trust scoring, and checkout enforcement APIs.**
