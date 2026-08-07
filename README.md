@@ -4,7 +4,7 @@
 
 **Integration assistant for the [Trusteed](https://www.trusteed.xyz) merchant-side agent policy, trust scoring, and checkout enforcement APIs.**
 
-This is a public, read-only MCP server for **developer enablement**: it answers questions, returns the merchant agent rules (R001–R030), shows the OpenAPI fragments, generates integration code for the most common frameworks, and issues short-lived sandbox keys. It is intended to live alongside your IDE while you build against Trusteed.
+This is a public, read-only MCP server for **developer enablement**: it answers questions, returns the merchant agent rules (R001–R062), shows the OpenAPI fragments, generates integration code for the most common frameworks, and issues short-lived sandbox keys. It is intended to live alongside your IDE while you build against Trusteed.
 
 It is **not** a checkout runtime. Production enforcement happens through the Trusteed API, the merchant plugins (Shopify, WooCommerce, PrestaShop, Odoo, Magento, Wix), and the signed RuleSnapshot fetched offline by those plugins. The decisions an LLM produces from this MCP's responses are documentation guidance, not authorisation.
 
@@ -16,7 +16,7 @@ Works with Claude Desktop, Cursor, VS Code, and any MCP-compatible host. No auth
 
 This server is intentionally narrow. Do **not** use it for:
 
-- **Production authorisation decisions.** The `get_agent_rules` output describes how R001–R030 _work_; it does not _execute_ them. Call `POST /api/v1/rules/evaluate` (or fetch the signed RuleSnapshot for offline enforcement) for any real allow/block decision.
+- **Production authorisation decisions.** The `get_agent_rules` output describes how R001–R062 _work_; it does not _execute_ them. Call `POST /api/v1/rules/evaluate` (or fetch the signed RuleSnapshot for offline enforcement) for any real allow/block decision.
 - **Storing or rotating secrets.** Never paste long-lived API keys, merchant credentials, or production tokens into prompts that reach this MCP. Sandbox keys returned by `create_sandbox_key` are designed to be disposable (24 h TTL); rate limits are enforced server-side.
 - **Handling PCI, PII, or payment data.** The tools return documentation, schemas, and configuration metadata only. No PAN, PII, or order content flows through this server.
 - **Compliance attestation.** LLM-generated explanations of the trust framework or rule semantics are not legally binding. Use the canonical sources (the [trust methodology page](https://www.trusteed.xyz/trust/methodology), the [agent-policy.json](https://www.trusteed.xyz/.well-known/agent-policy.json), the OpenAPI spec) for any compliance, audit, or legal review.
@@ -92,7 +92,7 @@ flowchart LR
     subgraph API["Trusteed Platform"]
         direction TB
         AG["Agent API\n/api/v1/agent/*"]
-        RP["Rules Engine\nR001–R030"]
+        RP["Rules Engine\nR001–R062"]
         TS["Trust Score\n8 components"]
     end
 
@@ -120,7 +120,7 @@ Search the Trusteed documentation by keyword. Returns ranked results from the tr
 
 ### `get_agent_rules`
 
-Returns the 30 merchant agent rules (R001–R030) with tiers, configurable thresholds, trigger conditions, and examples. The primary reference for implementing the Trusteed enforcement model. These rules do not require eIDAS, QTSP, Visa Verifier, or payment-network-specific evidence unless a merchant explicitly configures such evidence elsewhere.
+Returns the 46 merchant agent rules (R001–R062) with tiers, configurable thresholds, trigger conditions, and examples. The primary reference for implementing the Trusteed enforcement model. These rules do not require eIDAS, QTSP, Visa Verifier, or payment-network-specific evidence unless a merchant explicitly configures such evidence elsewhere.
 
 | Parameter | Type   | Required | Description                                                               |
 | --------- | ------ | -------- | ------------------------------------------------------------------------- |
@@ -203,23 +203,23 @@ Returns the catalog of `scopes_requested` enum values with data classification (
 
 ---
 
-## Agent Control Points — R001–R030
+## Agent Control Points — R001–R062
 
-These 30 rules constitute the **Trusteed merchant rule catalog**: a policy layer for agentic commerce, checkout risk, merchant controls, and customer protection. They are ordinary merchant/catalog rules. They do **not** require eIDAS, QTSP, Visa Verifier, or any regulated identity provider unless a merchant separately configures those higher-assurance integrations.
+These 46 rules constitute the **Trusteed merchant rule catalog**: a policy layer for agentic commerce, checkout risk, merchant controls, and customer protection. They are ordinary merchant/catalog rules. They do **not** require eIDAS, QTSP, Visa Verifier, or any regulated identity provider unless a merchant separately configures those higher-assurance integrations.
 
 
-> **Scope of this catalogue.** These 30 rules (`R001`–`R030`) are the subset this
-> public server documents. The production engine currently ships **46** rules
-> (`R001`–`R062`); the remainder — `R031`, `R032`, `R034`–`R036`, `R038`, `R039`,
-> `R041`–`R048`, `R062` — are enforced but **not yet described here**, because each
-> needs its trigger conditions and defaults derived from its evaluator rather than
-> restated from a summary. SSOT: `MERCHANT_RULE_DEFINITIONS`.
+> **Catalogue coverage.** All **46** rules of the production engine (`R001`–`R062`,
+> non-contiguous) are documented here as of `AGENT_RULES_VERSION` `2.0.0`. The
+> `R031`–`R062` entries were derived from each evaluator in
+> `rule-catalog.ts` — `when` mirrors the branch that actually returns HIT, and
+> `defaults` lists only values the evaluator really falls back to. Caps with no
+> default say so: those rules stay inert until the merchant configures them.
 
 The public source of truth is the `get_agent_rules` MCP tool, which returns every rule with code, category, maturity, severity, evaluation phase, description, default action, evidence expectations, and examples.
 
 ```mermaid
 flowchart TD
-    ROOT["Agent Rule Catalog R001-R030"]
+    ROOT["Agent Rule Catalog R001-R062"]
     ROOT --> KYA["KYA and identity\nR001-R008"]
     ROOT --> HP["Merchant high-priority controls\nR009-R018"]
     ROOT --> MP["Merchant medium-priority controls\nR019-R028"]
@@ -330,7 +330,7 @@ sequenceDiagram
 
     Dev->>IDE: "Show me the agent enforcement rules"
     IDE->>MCP: get_agent_rules(filter="all")
-    MCP-->>IDE: R001–R030 with thresholds + examples
+    MCP-->>IDE: R001–R062 with thresholds + examples
     IDE-->>Dev: Full enforcement spec
 
     Dev->>IDE: "Generate a TypeScript integration"
@@ -346,7 +346,7 @@ sequenceDiagram
     IDE-->>Dev: api_key (valid 24h)
 
     Dev->>API: Test with sandbox key
-    API->>API: Evaluate R001–R030
+    API->>API: Evaluate R001–R062
     API-->>Dev: Checkout response
 ```
 
