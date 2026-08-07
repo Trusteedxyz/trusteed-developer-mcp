@@ -207,6 +207,14 @@ Returns the catalog of `scopes_requested` enum values with data classification (
 
 These 30 rules constitute the **Trusteed merchant rule catalog**: a policy layer for agentic commerce, checkout risk, merchant controls, and customer protection. They are ordinary merchant/catalog rules. They do **not** require eIDAS, QTSP, Visa Verifier, or any regulated identity provider unless a merchant separately configures those higher-assurance integrations.
 
+
+> **Scope of this catalogue.** These 30 rules (`R001`–`R030`) are the subset this
+> public server documents. The production engine currently ships **46** rules
+> (`R001`–`R062`); the remainder — `R031`, `R032`, `R034`–`R036`, `R038`, `R039`,
+> `R041`–`R048`, `R062` — are enforced but **not yet described here**, because each
+> needs its trigger conditions and defaults derived from its evaluator rather than
+> restated from a summary. SSOT: `MERCHANT_RULE_DEFINITIONS`.
+
 The public source of truth is the `get_agent_rules` MCP tool, which returns every rule with code, category, maturity, severity, evaluation phase, description, default action, evidence expectations, and examples.
 
 ```mermaid
