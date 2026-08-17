@@ -69,8 +69,15 @@ describe("get_agent_rules (developer-mcp)", () => {
     const handler = buildHandler();
     const result = await handler({}, {});
 
+    // Matches TIER_1_RULE_CODES in packages/shared/src/enforcement/rule-identity.ts:
+    // only R001.verified-agent-required, R007.cross-merchant-abuse-signal, and
+    // R031.agent-commerce-disabled have tier===1 there. This literal previously
+    // listed R002/R003/R005/R008/R009 instead of R007 — pinning agent-rules.ts's
+    // drifted tier assignments as "correct" rather than catching the drift
+    // (audit 2026-08-17). Update this list only alongside a matching change to
+    // TIER_1_RULE_CODES in the SSOT, in the same commit.
     expect(result.structuredContent.tier1Codes).toEqual(
-      expect.arrayContaining(["R001", "R002", "R003", "R005", "R008", "R009"])
+      expect.arrayContaining(["R001", "R007", "R031"])
     );
     expect(result.structuredContent.tier1Codes).toHaveLength(
       AGENT_RULES.filter((r) => r.tier === 1).length

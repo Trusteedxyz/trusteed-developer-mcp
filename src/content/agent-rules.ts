@@ -22,7 +22,7 @@ export const AGENT_RULES = [
   {
     code: "R002",
     name: "SIGNATURE_SPOOF_BLOCK",
-    tier: 1,
+    tier: 2,
     action: "BLOCK",
     configurable: false,
     needsLookup: false,
@@ -40,7 +40,7 @@ export const AGENT_RULES = [
   {
     code: "R003",
     name: "MANDATE_BOUNDARY_MATCH",
-    tier: 1,
+    tier: 2,
     action: "BLOCK",
     configurable: true,
     needsLookup: false,
@@ -70,7 +70,7 @@ export const AGENT_RULES = [
   {
     code: "R005",
     name: "REVOKED_AGENT_BLOCK",
-    tier: 1,
+    tier: 2,
     action: "BLOCK",
     configurable: false,
     needsLookup: false,
@@ -100,7 +100,7 @@ export const AGENT_RULES = [
   {
     code: "R007",
     name: "CROSS_MERCHANT_ABUSE_SIGNAL",
-    tier: 2,
+    tier: 1,
     action: "BLOCK",
     configurable: true,
     needsLookup: true,
@@ -115,7 +115,7 @@ export const AGENT_RULES = [
   {
     code: "R008",
     name: "SCOPE_ESCALATION_DETECTION",
-    tier: 1,
+    tier: 2,
     action: "BLOCK",
     configurable: true,
     needsLookup: false,
@@ -130,7 +130,7 @@ export const AGENT_RULES = [
   {
     code: "R009",
     name: "AGENT_VERIFICATION_REQUIRED",
-    tier: 1,
+    tier: 2,
     action: "BLOCK",
     configurable: true,
     needsLookup: false,
@@ -152,9 +152,10 @@ export const AGENT_RULES = [
     description:
       "Adds friction to agents with no merchant-specific purchase history.",
     when: "completedOrders(agentId, merchantId) < minCompletedOrders",
-    defaults: { minCompletedOrders: 1 },
+    defaults: { minCompletedOrders: 0 },
     merchantPolicyKey: "r010",
-    merchantConfig: "minCompletedOrders (default 1)",
+    merchantConfig:
+      "minCompletedOrders — default 0, so an unconfigured R010 is a no-op (was 1 historically)",
     examples: ["First purchase by a new agent -> BLOCK or review"],
   },
   {
@@ -251,18 +252,26 @@ export const AGENT_RULES = [
   },
   {
     code: "R017",
-    name: "COUPON_DISCOUNT_ANOMALY",
+    // Canonical code is `R017.discount-anomaly-applied`. The old
+    // `coupon-discount-anomaly` name was retired (it claimed scrape detection
+    // the evaluator does not do) and resolves forward via
+    // LEGACY_RULE_CODE_ALIASES.
+    name: "DISCOUNT_ANOMALY_APPLIED",
     tier: 2,
     action: "BLOCK",
     configurable: true,
     needsLookup: false,
     description:
-      "Blocks excessive coupon probing or anomalous discount depth. Uses orderContext.discountCodes count (always available) as primary; _discount_codes_tried as fallback. Also checks _discount_bps for anomalous total discount depth.",
-    when: "discount tries > maxAttempts OR discount bps > maxDiscountBps",
-    defaults: { maxAttempts: 5, maxDiscountBps: 5000 },
+      "Blocks anomalous discounts ALREADY APPLIED to the cart: how many discount codes are on it, and the total discount depth. It does not detect coupon scraping from the cart — a rejected code never reaches discountCodes. Failed attempts count only where the server-side couponAttemptFailedCount lookup is wired (it takes precedence, since an agent can under-report the _discount_codes_tried attribute).",
+    when: "codes applied to the cart > maxAttempts OR discount bps > maxDiscountBps",
+    defaults: { maxAttempts: 5, maxDiscountBps: 5000, windowSeconds: 3600 },
     merchantPolicyKey: "r017",
-    merchantConfig: "maxAttempts, maxDiscountBps",
-    examples: ["Agent tries 12 coupon codes -> BLOCK"],
+    merchantConfig:
+      "maxAttempts, maxDiscountBps, windowSeconds (dedicated failed-attempt lookup only)",
+    examples: [
+      "Cart already carries 12 discount codes -> BLOCK",
+      "Agent tries 12 codes and all are rejected -> only caught where the couponAttemptFailedCount lookup is wired",
+    ],
   },
   {
     code: "R018",

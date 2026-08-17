@@ -37,7 +37,10 @@ export interface DeveloperMCPServerConfig {
 
 const DEFAULT_CONFIG: Required<DeveloperMCPServerConfig> = {
   name: "Trusteed Developer MCP",
-  version: "0.1.0",
+  // Must track `package.json` `version` — this is what the MCP client shows in
+  // `initialize`. Kept as a literal because `package.json` is not importable
+  // from the compiled ESM output without `resolveJsonModule` + a runtime read.
+  version: "0.2.0",
   baseUrl: "https://www.trusteed.xyz",
 };
 

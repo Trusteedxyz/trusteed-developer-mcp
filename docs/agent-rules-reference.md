@@ -1,6 +1,8 @@
-# Agent Rules Reference — R001–R030
+# Agent Rules Reference — R001–R062 (46 rules)
 
-Complete reference for the Trusteed merchant rule catalog. These 30 rules are evaluated at checkout by the Trusteed enforcement layer (Shopify Function, WooCommerce hook, PrestaShop override, Odoo override, or the server-side `POST /api/v1/rules/evaluate` endpoint).
+Complete reference for the Trusteed merchant rule catalog. These 46 rules are evaluated at checkout by the Trusteed enforcement layer (Shopify Function, WooCommerce hook, PrestaShop override, Odoo override, Magento plugin, or the server-side `POST /api/v1/rules/evaluate` endpoint).
+
+**Numbering is non-contiguous.** The catalog runs `R001`–`R062` but contains 46 rules, not 62: `R033`, `R037`, `R040` and `R049`–`R061` do not exist. Do not infer a rule from a gap.
 
 Rules do **not** require eIDAS, QTSP, Visa Verifier, or any regulated identity provider unless a merchant explicitly configures such evidence. The baseline works with order context, the agent token, merchant policies, and historical lookups.
 
@@ -8,14 +10,42 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 
 ---
 
+## Two names per rule, and why it matters
+
+Every rule has a **canonical code** of the form `R017.discount-anomaly-applied` and a
+**parameter key** of the form `r017`. They are not interchangeable:
+
+- The canonical code identifies the rule in a `merchant_trust_rules` row, in a signed
+  RuleSnapshot, and in the `get_agent_rules` output.
+- The lowercase `rNNN` key is where that rule's parameters live inside the engine's
+  `merchantPolicies` object. `rNNN` always belongs to the **canonical** evaluator of that
+  number — `r002` configures `R002.signature-spoof-block`, as you would expect.
+
+⚠️ **A bare short code is not the same as its canonical code.** Writing `R002` (instead of
+`R002.signature-spoof-block`) into a rule row does **not** select the canonical R002. The
+pre-canonical short codes `R001`–`R010` are a separate, older numbering that is still live
+in production data, and they run their own legacy evaluators reading their own
+`legacy.rNNN` parameter namespace (the legacy `R002` reads `threshold`; the canonical
+`R002.signature-spoof-block` reads `requireValidSignature`). Where those short codes
+normalise to is deliberately unintuitive — `R002` → `R006.provider-confidence-tier`,
+`R007` → `R018.cart-composition-guard` — so **always write the full canonical code**.
+Treat rule codes as opaque strings and copy them from `get_agent_rules`.
+
+Source: `LEGACY_RULE_CODE_ALIASES` and the `legacy` namespace comment in
+`packages/shared/src/enforcement/{merchant-rule-definitions,rule-catalog}.ts`.
+
+---
+
 ## Categories
 
-| Range     | Category                        | Count |
-| --------- | ------------------------------- | ----- |
-| R001–R008 | KYA and agent identity          | 8     |
-| R009–R018 | High-priority merchant controls | 10    |
-| R019–R028 | Medium-priority controls        | 10    |
-| R029–R030 | Control plane                   | 2     |
+| Range           | Category                        | Count  |
+| --------------- | ------------------------------- | ------ |
+| R001–R008       | KYA and agent identity          | 8      |
+| R009–R018       | High-priority merchant controls | 10     |
+| R019–R028       | Medium-priority controls        | 10     |
+| R029–R030       | Control plane                   | 2      |
+| R031–R048, R062 | Starter-kit controls            | 16     |
+| **Total**       |                                 | **46** |
 
 ---
 
@@ -31,7 +61,7 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 
 ```jsonc
 // merchantPolicies
-{ "r001": { "requireAgentId": false } }  // opt-out (open storefront)
+{ "r001": { "requireAgentId": false } } // opt-out (open storefront)
 ```
 
 ---
@@ -45,7 +75,7 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Depends on:** `_agent_token_signature_invalid` cart attribute set by the plugin verifier
 
 ```jsonc
-{ "r002": { "requireValidSignature": false } }  // opt-out (testing only)
+{ "r002": { "requireValidSignature": false } } // opt-out (testing only)
 ```
 
 ---
@@ -59,21 +89,26 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Depends on:** `_product_categories` cart attribute (comma-separated list set by plugin)
 
 ```jsonc
-{ "r003": { "maxAmountCents": 50000, "allowedCategories": ["electronics", "books"] } }
+{
+  "r003": {
+    "maxAmountCents": 50000,
+    "allowedCategories": ["electronics", "books"],
+  },
+}
 ```
 
 ---
 
 ### R004 · `new-key-friction`
 
-**Function:** Adds friction (requires explicit user confirmation) when a freshly-issued agent key is used for the first time. Key age is measured from the JWT `iat` claim or first-seen timestamp.
+**Function:** Adds friction when an agent uses a key that was issued fewer than `maxKeyAgeHours` hours ago. Prevents freshly-minted keys from bypassing warming signals.
 
-**Default action:** FRICTION (require_confirmation)  
-**Configurable:** `minKeyAgeSeconds` (default 300 s), `frictionAction` (`require_confirmation` | `block`)  
+**Default action:** BLOCK  
+**Configurable:** `maxKeyAgeHours` (default 24 h)  
 **Depends on:** `_agent_key_age_hours` cart attribute
 
 ```jsonc
-{ "r004": { "minKeyAgeSeconds": 600, "frictionAction": "block" } }
+{ "r004": { "maxKeyAgeHours": 48 } }
 ```
 
 ---
@@ -142,25 +177,25 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Function:** Requires the agent to have at least `minCompletedOrders` prior completed orders with this merchant before proceeding. First-time agents go through probation.
 
 **Default action:** BLOCK  
-**Configurable:** `minCompletedOrders` (default 3)  
+**Configurable:** `minCompletedOrders` — **default `0`, i.e. the rule is a no-op until the merchant sets it**. (It was `1` historically; the default was changed to `0` so an unconfigured R010 cannot block. Enabling R010 in ENFORCE without explicit params is rejected by `checkEnforceableParams`.)  
 **Depends on:** `completedOrderCount` historical lookup or `_completed_orders` cart attribute
 
 ```jsonc
-{ "r010": { "minCompletedOrders": 5 } }
+{ "r010": { "minCompletedOrders": 3 } }
 ```
 
 ---
 
 ### R011 · `repeat-failed-checkout`
 
-**Function:** Blocks agents that have exceeded `maxFailures` failed checkout attempts within `windowSeconds`. Protects against brute-force checkout probing.
+**Function:** Blocks agents that have exceeded `maxAttempts` failed checkout attempts within `windowSeconds`. Protects against brute-force checkout probing.
 
 **Default action:** BLOCK  
-**Configurable:** `windowSeconds` (default 3600 s), `maxFailures` (default 5)  
+**Configurable:** `windowSeconds` (default 300 s), `maxAttempts` (default 3)  
 **Depends on:** `failedCheckoutCount` or `velocityCount` historical lookup
 
 ```jsonc
-{ "r011": { "windowSeconds": 1800, "maxFailures": 3 } }
+{ "r011": { "windowSeconds": 120, "maxAttempts": 5 } }
 ```
 
 ---
@@ -198,7 +233,13 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Depends on:** `billingCountry` / `shippingCountry` order context; `cancelCount` historical lookup
 
 ```jsonc
-{ "r014": { "highRiskCountries": ["KP","IR"], "maxCancellations": 2, "windowDays": 30 } }
+{
+  "r014": {
+    "highRiskCountries": ["KP", "IR"],
+    "maxCancellations": 2,
+    "windowDays": 30,
+  },
+}
 ```
 
 ---
@@ -231,13 +272,28 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 
 ---
 
-### R017 · `coupon-discount-anomaly`
+### R017 · `discount-anomaly-applied`
 
-**Function:** Limits the number of discount codes tried (`maxAttempts`) and the total discount depth (`maxDiscountBps`). Detects agents that systematically probe coupon codes.
+> **Renamed.** The old name `coupon-discount-anomaly` was retired because it described a
+> capability the rule does not have. The canonical code is
+> `R017.discount-anomaly-applied`; `R017.coupon-discount-anomaly` still resolves forward
+> via the alias table so existing rows and plugin snapshots keep working.
+
+**Function:** Caps anomalous discounts **already applied to the cart** — the number of
+discount codes present on it (`maxAttempts`) and the total discount depth
+(`maxDiscountBps`). It does **not** detect coupon scraping or brute-force code probing
+from the cart alone: a code that was tried and rejected never reaches `discountCodes`.
+
+Failed attempts are only counted when the server-side `couponAttemptFailedCount` lookup is
+wired (dedicated `coupon_attempt_failed_events` table, `windowSeconds` default 3600). That
+lookup takes precedence when it returns a positive count, because an agent can under-report
+the `_discount_codes_tried` cart attribute to evade the cap. In offline / plugin-side
+evaluation the lookup is unavailable, so only applied discounts are seen.
 
 **Default action:** BLOCK  
-**Configurable:** `maxAttempts` (default 5), `maxDiscountBps` (default 5000 = 50%)  
-**Depends on:** `orderContext.discountCodes` (preferred) or `_discount_codes_tried` / `_discount_bps` cart attributes
+**Configurable:** `maxAttempts` (default 5), `maxDiscountBps` (default 5000 = 50%), `windowSeconds` (default 3600, dedicated lookup only)  
+**Depends on:** `couponAttemptFailedCount` historical lookup (preferred), else `orderContext.discountCodes` length, else `_discount_codes_tried`; plus `_discount_bps`  
+**No signal:** when none of the above is present the rule returns NO_SIGNAL rather than PASS — it does not assume the cart is clean
 
 ```jsonc
 { "r017": { "maxAttempts": 3, "maxDiscountBps": 2000 } }
@@ -254,7 +310,14 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Depends on:** `orderContext.cartTotalCents`, `orderContext.itemCount`, `orderContext.lineItems`
 
 ```jsonc
-{ "r018": { "merchantAvgOrderCents": 4000, "spikeMultiplier": 4.0, "maxItemCount": 20, "maxSingleSkuQty": 5 } }
+{
+  "r018": {
+    "merchantAvgOrderCents": 4000,
+    "spikeMultiplier": 4.0,
+    "maxItemCount": 20,
+    "maxSingleSkuQty": 5,
+  },
+}
 ```
 
 ---
@@ -269,7 +332,7 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Configurable:** `allowedCountries`, `blockedCountries` (ISO 3166-1 alpha-2 codes)
 
 ```jsonc
-{ "r019": { "allowedCountries": ["ES","FR","DE","IT","PT"] } }
+{ "r019": { "allowedCountries": ["ES", "FR", "DE", "IT", "PT"] } }
 ```
 
 ---
@@ -368,7 +431,7 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Depends on:** `_stored_value_cents` cart attribute
 
 ```jsonc
-{ "r027": { "maxStoredValueCents": 20000 } }  // allow up to $200
+{ "r027": { "maxStoredValueCents": 20000 } } // allow up to $200
 ```
 
 ---
@@ -391,6 +454,7 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 
 **Default action:** varies by preset  
 **Configurable:** `preset` — one of:
+
 - `"abierto"` — no additional restrictions (rule always passes)
 - `"equilibrado"` — default; standard checks apply
 - `"estricto"` — requires verified agent + trust score ≥ 70
@@ -410,32 +474,300 @@ Use the `get_agent_rules` MCP tool for machine-readable output that includes tri
 **Configurable:** `maxAmountCents`, `allowedCountries`
 
 ```jsonc
-{ "r030": { "maxAmountCents": 100000, "allowedCountries": ["ES","MX","US"] } }
+{ "r030": { "maxAmountCents": 100000, "allowedCountries": ["ES", "MX", "US"] } }
+```
+
+---
+
+## R031–R048, R062 — Starter-Kit Controls
+
+The starter kit is the set a merchant can turn on without any identity infrastructure:
+a kill-switch, blunt caps, provider lists, and two approval flows. Everything below was
+derived from the evaluator in `packages/shared/src/enforcement/rule-catalog.ts` — "when it
+fires" mirrors the branch that actually returns HIT, and "configurable" lists only values
+the evaluator really falls back to.
+
+**Most of these caps have no default.** `R035`, `R036`, `R038`, `R039`, `R041`, `R042` and
+`R062` stay completely inert until the merchant sets the number. Enabling one of them and
+expecting a built-in threshold is the most common mistake with this group. `R048` is the
+exception: it ships with a populated blocklist.
+
+**Shopify availability.** Shopify Functions run with no network or database access, so
+every rule here that needs a historical count, a registry lookup, or a frozen cart is
+unavailable in the Shopify Function and enforced only through the server-side API
+(`POST /api/v1/rules/evaluate`). That applies to `R041`, `R042`, `R043`, `R044`, `R045`,
+`R046`, `R047` and `R062`. WooCommerce, PrestaShop and Magento support all of them.
+
+---
+
+### R031 · `agent-commerce-disabled`
+
+**Function:** Merchant kill-switch. Blocks every agent purchase while enabled; organic human checkout is unaffected.
+
+**Default action:** BLOCK **(Tier 1)**  
+**Configurable:** nothing — enabling the rule _is_ the configuration  
+**When it fires:** an agent is present, on any agentic checkout  
+**Precedence:** `shop-switch`. When R031 matches, it is the code reported to the agent and to the metric even if other rules also match — they are describing symptoms, R031 is the reason.
+
+---
+
+### R032 · `category-blocklist`
+
+**Function:** Blocks agent purchases of products in merchant-listed categories (the usual legal restrictions: alcohol, tobacco, weapons, adult).
+
+**Default action:** BLOCK  
+**Configurable:** `blockedCategoryIds` (default `[]` — rule inert)  
+**When it fires:** any cart category is in the list, matched raw first and then retried against the platform-normalised taxonomy  
+**No signal:** a cart that declares no categories PASSES. Absence is never treated as a match.
+
+```jsonc
+{ "r032": { "blockedCategoryIds": ["alcohol", "tobacco"] } }
+```
+
+---
+
+### R034 · `sku-blocklist`
+
+**Function:** Per-SKU escape hatch for when catalogue categorisation is incomplete.
+
+**Default action:** BLOCK  
+**Configurable:** `blockedSkus` (default `[]` — rule inert)  
+**When it fires:** any line-item id is in `blockedSkus`
+
+```jsonc
+{ "r034": { "blockedSkus": ["SKU-9", "SKU-14"] } }
+```
+
+---
+
+### R035 · `max-order-value`
+
+**Function:** Caps the total agent order amount. A merchant-side financial guard, independent of any spending cap the agent's own mandate carries.
+
+**Default action:** BLOCK  
+**Configurable:** `maxCents` — **no default; unset means the rule never fires**  
+**When it fires:** `cartTotalCents > maxCents`
+
+```jsonc
+{ "r035": { "maxCents": 50000 } } // EUR 500
+```
+
+---
+
+### R036 · `max-line-item-value`
+
+**Function:** Caps the per-line subtotal, so one expensive item cannot hide inside a small-looking cart.
+
+**Default action:** BLOCK  
+**Configurable:** `maxCentsPerLine` — **no default**. Note the field name: it is _not_ `maxCents` (that belongs to R035). Setting `maxCents` here leaves the rule inert.  
+**When it fires:** for any line, `qty * priceCents > maxCentsPerLine`
+
+```jsonc
+{ "r036": { "maxCentsPerLine": 20000 } }
+```
+
+---
+
+### R038 · `max-items-per-order`
+
+**Function:** Caps the total piece count per order. Anti-hoarding control. Overlaps R018 deliberately, with plain-language naming.
+
+**Default action:** BLOCK  
+**Configurable:** `maxQuantity` — **no default**  
+**When it fires:** `itemCount` (sum of units, not of lines) `> maxQuantity`
+
+```jsonc
+{ "r038": { "maxQuantity": 10 } }
+```
+
+---
+
+### R039 · `max-quantity-per-sku`
+
+**Function:** Caps quantity per individual SKU. Anti-scalping and resale prevention.
+
+**Default action:** BLOCK  
+**Configurable:** `maxPerSku` — **no default**  
+**When it fires:** any line `qty > maxPerSku`
+
+```jsonc
+{ "r039": { "maxPerSku": 2 } }
+```
+
+---
+
+### R041 · `max-orders-per-hour-merchant`
+
+**Function:** Caps **successful** orders at the merchant in a rolling 1 h window across **all** agents. Anti-burst protection at merchant scope; the complement of R042, which is per-agent.
+
+**Default action:** BLOCK  
+**Configurable:** `maxPerHour` — **no default**. The window is fixed at 1 h and is not configurable.  
+**When it fires:** merchant-wide successful orders in the last 3600 s `> maxPerHour`  
+**Signal:** `merchantOrderCountInWindow` lookup, else the `_merchant_orders_1h` cart attribute. With neither, the count is `0` and the rule degrades to PASS rather than blocking blind.  
+**Needs server lookup:** yes · **Shopify Function:** not available (merchant-wide historical count)
+
+```jsonc
+{ "r041": { "maxPerHour": 20 } }
+```
+
+---
+
+### R042 · `max-orders-per-agent-day`
+
+**Function:** Caps successful orders per `agentId` per 24 h window. Complements R011, which counts _failures_ rather than successes.
+
+**Default action:** BLOCK  
+**Configurable:** `maxPerAgent` — **no default**. The window is fixed at 24 h.  
+**When it fires:** completed orders by this agent in the last 86 400 s `> maxPerAgent`. With no agent present the rule PASSES — it is agent-scoped.  
+**Signal:** `completedOrderCountInWindow` lookup, else the `_completed_orders_24h` cart attribute. With neither, the count is `0` and the rule degrades to PASS.  
+**Needs server lookup:** yes · **Shopify Function:** not available (historical order count)
+
+```jsonc
+{ "r042": { "maxPerAgent": 5 } }
+```
+
+---
+
+### R043 · `agent-checkout-approval-required`
+
+**Function:** Routes every agent order through manual merchant approval (HITL, "copilot" instead of "autopilot" mode). The cart is **frozen, not cancelled**, and resumes when the merchant decides.
+
+**Default action:** REVIEW (HITL)  
+**Configurable:** `ttlMinutes` for the approval window (service-side default 60) and `minCents`, an amount band. **With `minCents` absent the rule fires on every agentic checkout** — which is how it is configured in production today.  
+**When it fires:** an agent is present (and, if set, the cart reaches `minCents`)  
+**Shopify Function:** not available (needs cart freeze + dashboard workflow)
+
+```jsonc
+{ "r043": { "ttlMinutes": 120, "minCents": 25000 } }
+```
+
+---
+
+### R044 · `first-n-approval`
+
+**Function:** Routes an agent's first N completed orders at this merchant through approval, then stops. Self-disarming: once the agent has history the rule lapses and never blocks again.
+
+**Default action:** REVIEW (HITL)  
+**Configurable:** `firstN` (default `1`). `firstN <= 0` disables the rule outright.  
+**When it fires:** the agent's **lifetime** completed orders at this merchant `< firstN`  
+**Needs server lookup:** yes · **Shopify Function:** not available (historical count + cart freeze)
+
+```jsonc
+{ "r044": { "firstN": 3 } }
+```
+
+---
+
+### R045 · `provider-allowlist`
+
+**Function:** Admits only buying agents from merchant-listed providers (OpenAI, Anthropic, …).
+
+**Default action:** BLOCK  
+**Configurable:** `allowedProviderIds` (default `[]` — rule inert)  
+**When it fires:** the list is non-empty **and** (the provider cannot be resolved **or** it is not in the list)  
+**Fail mode:** **fail-closed** — an agent whose provider is unresolvable is BLOCKED  
+**Shopify Function:** not available (registry lookup)
+
+```jsonc
+{ "r045": { "allowedProviderIds": ["openai", "anthropic"] } }
+```
+
+---
+
+### R046 · `provider-blocklist`
+
+**Function:** Blocks buying agents from specific providers. Same shape as R045, opposite failure mode — read both before choosing.
+
+**Default action:** BLOCK  
+**Configurable:** `blockedProviderIds` (default `[]` — rule inert)  
+**When it fires:** the list is non-empty **and** the resolved provider is in it  
+**Fail mode:** **fail-open** — an agent whose provider is unresolvable PASSES  
+**Shopify Function:** not available (registry lookup)
+
+```jsonc
+{ "r046": { "blockedProviderIds": ["acme-bot"] } }
+```
+
+---
+
+### R047 · `customer-confirmation`
+
+**Function:** Requires the **buyer** to confirm an agent-initiated order out of band (email or SMS link) before payment is captured. Distinct from R043, which asks the **merchant**.
+
+**Default action:** REVIEW (out-of-band confirmation)  
+**Configurable:** `channels` (`email` / `sms`), `ttlMinutes`, and `minCents` (amount band — absent means every agentic checkout)  
+**When it fires:** an agent is present **and** the cart carries a customer email or phone. With neither, the rule PASSES — there is no channel to confirm through.  
+**Shopify Function:** not available (cart freeze + notification dispatch)
+
+```jsonc
+{ "r047": { "channels": ["email"], "ttlMinutes": 30 } }
+```
+
+---
+
+### R048 · `no-digital-goods-for-agents`
+
+**Function:** Blocks gift cards, license keys, downloadables and stored-value products for agent purchases — the classic instant-resale vector. Reuses R027's signal helpers and widens the scope.
+
+**Default action:** BLOCK  
+**Configurable:** `blockedTypes` — **this one has a default**: `["gift_card", "license_key", "downloadable", "stored_value"]`. Passing an explicitly empty array disables the rule.  
+**When it fires:** the cart declares a digital-good type present in `blockedTypes`. A cart declaring no type PASSES.
+
+```jsonc
+{ "r048": { "blockedTypes": ["gift_card", "license_key"] } }
+```
+
+---
+
+### R062 · `max-spend-per-agent-window`
+
+**Function:** Caps **cumulative** agent spend at this merchant within a rolling window. Neither R035 (one order) nor R042 (order count) stops an agent from draining a budget through many small purchases; this does. The in-flight cart counts toward the total.
+
+**Default action:** BLOCK  
+**Configurable:** `maxSpendCents` (**no default** — unset means inert) and `windowSeconds` (default 86 400 = 24 h)  
+**When it fires:** spend already completed in the window **plus** the current cart total `> maxSpendCents`. The boundary is strict: spending exactly the budget is allowed.  
+**Signal:** with no spend signal available, prior spend counts as `0` and the rule compares only the current cart.  
+**Needs server lookup:** yes · **Shopify Function:** not available (historical amount aggregate)
+
+```jsonc
+{ "r062": { "maxSpendCents": 100000, "windowSeconds": 604800 } } // EUR 1000 / 7 days
 ```
 
 ---
 
 ## Using Rules via the API
 
+⚠️ **The `rNNN` blocks shown throughout this document are merchant _configuration_, not
+request fields.** There is no `merchantPolicies` field in the evaluate request schema —
+sending one has no effect. The merchant configures thresholds in the Trusteed dashboard,
+and the server resolves that merchant's active rule set from the authenticated
+installation, then evaluates it against the `orderContext` you send.
+
+Authentication is a per-installation HMAC over the raw request bytes, not a simple API key.
+The full request contract — required headers, required fields, `platform` enum, response
+codes — lives in the [README](../README.md#evaluating-rules-via-the-api); this document
+does not duplicate it, so there is only one place to keep correct.
+
 ```bash
-POST https://www.trusteed.xyz/api/v1/rules/evaluate
+POST https://api.trusteed.xyz/v1/rules/evaluate
 Content-Type: application/json
-X-Agent-Api-Key: <your-key>
+X-Trusteed-Installation-Id: <installation uuid>
+X-Trusteed-Signature: t=<unix-seconds>,s=<hex-hmac-sha256>
 
 {
-  "agentId": "agent_abc123",
-  "agentTrustScore": 42,
+  "merchantId": "acme-store",
+  "platform": "TRUSTEED_MCP",
+  "installationId": "<installation uuid>",
+  "timestamp": "2026-08-17T10:15:30Z",
+  "agentId": "did:web:agent.openai.com",
   "orderContext": {
     "cartTotalCents": 8500,
+    "currency": "EUR",
+    "itemCount": 2,
     "billingCountry": "ES",
-    "lineItems": [{ "productId": "p1", "quantity": 2 }],
-    "paymentMethod": "stripe_card"
-  },
-  "merchantPolicies": {
-    "r006": { "minScore": 40 },
-    "r011": { "windowSeconds": 300, "maxAttempts": 3 },
-    "r019": { "allowedCountries": ["ES", "FR", "DE"] },
-    "r029": { "preset": "equilibrado" }
+    "paymentMethod": "stripe_card",
+    "agentTrustScore": 42,
+    "lineItems": [{ "id": "p1", "qty": 2, "priceCents": 4250 }]
   }
 }
 ```
@@ -443,8 +775,10 @@ X-Agent-Api-Key: <your-key>
 ### Offline enforcement (plugin-side)
 
 ```bash
-GET https://www.trusteed.xyz/:storeSlug/rules-snapshot
-# Returns a JWS-signed RuleSnapshot valid for 5 minutes.
+GET https://api.trusteed.xyz/v1/rules/snapshot/:merchantId
+# Same HMAC headers; `:merchantId` must match your installation.
+# Returns a JWS-signed RuleSnapshot. Honour the payload's own `validUntil`:
+# 300s normally, but 60s while a Tier-1 rule or the merchant kill-switch is active.
 # The plugin verifies the signature offline and applies the rules
 # without a network call at checkout time.
 ```
@@ -463,76 +797,122 @@ Returns the full rule definition including trigger conditions, evidence requirem
 
 Rules read platform-agnostic cart attributes injected by the Trusteed plugin during cart enrichment. Attributes use the `_` prefix convention.
 
-| Attribute                        | Type    | Set by              | Used by                |
-| -------------------------------- | ------- | ------------------- | ---------------------- |
-| `_agent_token_signature_invalid` | boolean | Plugin verifier     | R002                   |
-| `_agent_token_present`           | boolean | Plugin verifier     | R002                   |
-| `_agent_revoked`                 | boolean | Plugin verifier     | R005                   |
-| `_agent_status`                  | string  | Plugin verifier     | R005                   |
-| `_agent_key_age_hours`           | number  | Plugin verifier     | R004                   |
-| `_provider_confidence`           | number  | Plugin enrichment   | R006                   |
-| `_cross_merchant_abuse`          | boolean | Server lookup       | R007                   |
-| `_requested_scopes`              | CSV     | Agent token claims  | R008                   |
-| `_product_categories`            | CSV     | Plugin enrichment   | R003, R012             |
-| `_return_policy_mismatch`        | boolean | Plugin enrichment   | R013                   |
-| `_price_delta_bps`               | number  | Plugin (cart-load)  | R015                   |
-| `_lowest_stock`                  | number  | Plugin enrichment   | R016                   |
-| `_discount_codes_tried`          | number  | Shopify/WC attribute| R017                   |
-| `_discount_bps`                  | number  | Plugin enrichment   | R017                   |
-| `_failed_checkout_count`         | number  | Server lookup       | R011                   |
-| `_completed_orders`              | number  | Server lookup       | R010, R021             |
-| `_merchant_local_hour`           | number  | Plugin (optional)   | R020                   |
-| `_shipping_po_box`               | boolean | Address validation  | R025                   |
-| `_shipping_freight_forwarder`    | boolean | Address validation  | R025                   |
-| `_subscription`                  | boolean | Plugin enrichment   | R026                   |
-| `_autorenew`                     | boolean | Plugin enrichment   | R026                   |
-| `_autorenew_consent`             | boolean | Buyer-side consent  | R026                   |
-| `_stored_value_cents`            | number  | Plugin enrichment   | R027                   |
-| `_b2b_order`                     | boolean | Plugin enrichment   | R028                   |
-| `_purchase_order_hash`           | string  | Plugin enrichment   | R028                   |
-| `_regulated_evidence_present`    | boolean | Plugin verifier     | R029 (`regulado` preset) |
+| Attribute                        | Type    | Set by               | Used by                       |
+| -------------------------------- | ------- | -------------------- | ----------------------------- |
+| `_agent_token_signature_invalid` | boolean | Plugin verifier      | R002                          |
+| `_agent_token_present`           | boolean | Plugin verifier      | R002                          |
+| `_agent_revoked`                 | boolean | Plugin verifier      | R005                          |
+| `_agent_status`                  | string  | Plugin verifier      | R005                          |
+| `_agent_key_age_hours`           | number  | Plugin verifier      | R004                          |
+| `_provider_confidence`           | number  | Plugin enrichment    | R006                          |
+| `_cross_merchant_abuse`          | boolean | Server lookup        | R007                          |
+| `_requested_scopes`              | CSV     | Agent token claims   | R008                          |
+| `_product_categories`            | CSV     | Plugin enrichment    | R003, R012                    |
+| `_return_policy_mismatch`        | boolean | Plugin enrichment    | R013                          |
+| `_price_delta_bps`               | number  | Plugin (cart-load)   | R015                          |
+| `_lowest_stock`                  | number  | Plugin enrichment    | R016                          |
+| `_discount_codes_tried`          | number  | Shopify/WC attribute | R017                          |
+| `_discount_bps`                  | number  | Plugin enrichment    | R017                          |
+| `_failed_checkout_count`         | number  | Server lookup        | R011                          |
+| `_completed_orders`              | number  | Server lookup        | R010, R021                    |
+| `_merchant_local_hour`           | number  | Plugin (optional)    | R020                          |
+| `_shipping_po_box`               | boolean | Address validation   | R025                          |
+| `_shipping_freight_forwarder`    | boolean | Address validation   | R025                          |
+| `_subscription`                  | boolean | Plugin enrichment    | R026                          |
+| `_autorenew`                     | boolean | Plugin enrichment    | R026                          |
+| `_autorenew_consent`             | boolean | Buyer-side consent   | R026                          |
+| `_stored_value_cents`            | number  | Plugin enrichment    | R027                          |
+| `_b2b_order`                     | boolean | Plugin enrichment    | R028                          |
+| `_purchase_order_hash`           | string  | Plugin enrichment    | R028                          |
+| `_regulated_evidence_present`    | boolean | Plugin verifier      | R029 (`regulado` preset)      |
+| `_product_platform`              | string  | Plugin enrichment    | R032 (taxonomy normalisation) |
+| `_agent_provider_id`             | string  | Agent-declared       | R045, R046                    |
+| `_customer_email`                | string  | Platform projection  | R047                          |
+| `_customer_phone`                | string  | Platform projection  | R047                          |
+| `_digital_good_types`            | CSV     | Plugin enrichment    | R048                          |
+| `_merchant_orders_1h`            | number  | Server projection    | R041 (lookup fallback)        |
+| `_completed_orders_24h`          | number  | Server projection    | R042 (lookup fallback)        |
 
 ---
 
 ## Tier Matrix
 
-| Rule  | Tier 1 (kill-switch) | Tier 2 (standard) | Needs server lookup |
-| ----- | :------------------: | :---------------: | :-----------------: |
-| R001  | ✅                   |                   |                     |
-| R002  | ✅                   |                   |                     |
-| R003  |                      | ✅                |                     |
-| R004  |                      | ✅                |                     |
-| R005  |                      | ✅                | ✅                  |
-| R006  |                      | ✅                |                     |
-| R007  | ✅                   |                   | ✅                  |
-| R008  |                      | ✅                |                     |
-| R009  |                      | ✅                |                     |
-| R010  |                      | ✅                | ✅                  |
-| R011  |                      | ✅                | ✅                  |
-| R012  |                      | ✅                |                     |
-| R013  |                      | ✅                |                     |
-| R014  |                      | ✅                | ✅                  |
-| R015  |                      | ✅                |                     |
-| R016  |                      | ✅                |                     |
-| R017  |                      | ✅                |                     |
-| R018  |                      | ✅                |                     |
-| R019  |                      | ✅                |                     |
-| R020  |                      | ✅                |                     |
-| R021  |                      | ✅                | ✅                  |
-| R022  |                      | ✅                |                     |
-| R023  |                      | ✅                | ✅                  |
-| R024  |                      | ✅                | ✅                  |
-| R025  |                      | ✅                |                     |
-| R026  |                      | ✅                |                     |
-| R027  |                      | ✅                |                     |
-| R028  |                      | ✅                |                     |
-| R029  |                      | ✅                |                     |
-| R030  |                      | ✅                |                     |
+The tier column below follows the single source of truth,
+`packages/shared/src/enforcement/merchant-rule-definitions.ts`, from which
+`TIER_1_RULE_CODES` is derived. **Exactly three rules are Tier 1: `R001`, `R007` and
+`R031`** (plus the two pre-canonical short codes `R001` / `R007`, kept for live production
+rows). `src/content/agent-rules.ts` and `get_agent_rules(filter="tier1")` were reconciled
+to this SSOT on 2026-08-17 (previously wrongly declared `R002`/`R003`/`R005`/`R008`/`R009`
+as Tier 1 and omitted `R007`) — the tool's output now matches this table.
+
+| Rule | Tier 1 (kill-switch) | Tier 2 (standard) | Needs server lookup |
+| ---- | :------------------: | :---------------: | :-----------------: |
+| R001 |          ✅          |                   |                     |
+| R002 |                      |        ✅         |                     |
+| R003 |                      |        ✅         |                     |
+| R004 |                      |        ✅         |                     |
+| R005 |                      |        ✅         |         ✅          |
+| R006 |                      |        ✅         |                     |
+| R007 |          ✅          |                   |         ✅          |
+| R008 |                      |        ✅         |                     |
+| R009 |                      |        ✅         |                     |
+| R010 |                      |        ✅         |         ✅          |
+| R011 |                      |        ✅         |         ✅          |
+| R012 |                      |        ✅         |                     |
+| R013 |                      |        ✅         |                     |
+| R014 |                      |        ✅         |         ✅          |
+| R015 |                      |        ✅         |                     |
+| R016 |                      |        ✅         |                     |
+| R017 |                      |        ✅         |                     |
+| R018 |                      |        ✅         |                     |
+| R019 |                      |        ✅         |                     |
+| R020 |                      |        ✅         |                     |
+| R021 |                      |        ✅         |         ✅          |
+| R022 |                      |        ✅         |                     |
+| R023 |                      |        ✅         |         ✅          |
+| R024 |                      |        ✅         |         ✅          |
+| R025 |                      |        ✅         |                     |
+| R026 |                      |        ✅         |                     |
+| R027 |                      |        ✅         |                     |
+| R028 |                      |        ✅         |                     |
+| R029 |                      |        ✅         |                     |
+| R030 |                      |        ✅         |                     |
+| R031 |          ✅          |                   |                     |
+| R032 |                      |        ✅         |                     |
+| R034 |                      |        ✅         |                     |
+| R035 |                      |        ✅         |                     |
+| R036 |                      |        ✅         |                     |
+| R038 |                      |        ✅         |                     |
+| R039 |                      |        ✅         |                     |
+| R041 |                      |        ✅         |         ✅          |
+| R042 |                      |        ✅         |         ✅          |
+| R043 |                      |        ✅         |                     |
+| R044 |                      |        ✅         |         ✅          |
+| R045 |                      |        ✅         |          °          |
+| R046 |                      |        ✅         |          °          |
+| R047 |                      |        ✅         |                     |
+| R048 |                      |        ✅         |                     |
+| R062 |                      |        ✅         |         ✅          |
 
 **Tier 1** rules use a fast-path kill-switch with fail-closed semantics. **Tier 2** rules use standard fail-open semantics (alert on >5% block rate / hour). Rules marked "Needs server lookup" require a database or Redis call at evaluation time.
 
+**°** — `R045` / `R046` resolve the agent's provider from the `_agent_provider_id` cart
+attribute first and only fall back to the provider-registry lookup when that attribute is
+absent. They therefore work offline _if_ the plugin projects the attribute, but their
+Shopify-Function support is still marked unavailable in the SSOT because the fallback
+cannot run there.
+
+Every rule in the R031+ block that needs a lookup, a registry, or a frozen cart is
+**unavailable in the Shopify Function** and enforced only via the server-side API:
+`R041`, `R042`, `R043`, `R044`, `R045`, `R046`, `R047`, `R062`. Per-rule reasons live in
+`platformSupport` in `packages/shared/src/enforcement/merchant-rule-definitions.ts`.
+
 ---
 
-*Source of truth for rule logic: `apps/api/src/services/enforcement/rule-catalog.ts`.*  
-*Machine-readable output: `get_agent_rules` MCP tool.*  
-*Runtime evaluation: `POST /api/v1/rules/evaluate`.*
+_Source of truth for rule identity, tier and platform support:_
+`packages/shared/src/enforcement/merchant-rule-definitions.ts`.  
+_Source of truth for evaluator logic and parameter defaults:_
+`packages/shared/src/enforcement/rule-catalog.ts`
+(`apps/api/src/services/enforcement/rule-catalog.ts` is only a re-export barrel).  
+_Machine-readable output: `get_agent_rules` MCP tool._  
+_Runtime evaluation: `POST /api/v1/rules/evaluate`._

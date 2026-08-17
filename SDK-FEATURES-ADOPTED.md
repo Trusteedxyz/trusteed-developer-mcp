@@ -1,7 +1,7 @@
 # Novedades del MCP SDK Adoptadas en Developer MCP
 
 **Fecha:** 2026-03-20
-**SDK:** @modelcontextprotocol/sdk@^1.27.1
+**SDK:** @modelcontextprotocol/sdk@^1.29.0
 **Referencia:** Analisis de Context7 sobre typescript-sdk y ext-apps
 
 ---
@@ -12,18 +12,16 @@
 
 **Que es:** Los tools MCP ahora pueden retornar tanto `content` (texto markdown para el LLM) como `structuredContent` (JSON tipado para uso programatico).
 
-**Donde lo usamos:** En los 10 tools del Developer MCP:
+**Donde lo usamos:** En los **10** tools del Developer MCP (los 5 originales mas `get_agent_rules`, `create_sandbox_key`, `get_extension_manifest_schema`, `get_webhook_event_schema` y `get_extension_scopes`):
 
 - `search_docs` → structuredContent con array de {id, section, title, relevance}
 - `get_openapi_schema` → structuredContent con {resource, schema}
 - `get_integration_guide` → structuredContent con {framework, install, code, nextSteps}
 - `get_trust_framework` → structuredContent con {components, rankingFormula, merchantStates}
 - `get_protocol_info` → structuredContent con {protocols: [{id, name, status, adapter}]}
-- `get_agent_rules` → structuredContent con {rules: [{code, name, tier, action, ...}]}
-- `create_sandbox_key` → structuredContent con {api_key, expires_at, base_url, rate_limit}
-- `get_extension_manifest_schema` → structuredContent con {schema_version, required_fields, field_guide}
-- `get_webhook_event_schema` → structuredContent con {envelope_version, scope, envelope_fields}
-- `get_extension_scopes` → structuredContent con {scopes: [{scope, purpose, data_classification}]}
+- `get_agent_rules` → structuredContent con {version, rules: [...]}
+- `create_sandbox_key` → structuredContent con {api_key, expires_at}
+- `get_extension_manifest_schema` / `get_webhook_event_schema` / `get_extension_scopes` → structuredContent con el descriptor correspondiente
 
 **Impacto competitivo:** commercetools Commerce MCP retorna JSON transformable a tabular. Nosotros retornamos markdown legible + JSON estructurado. Los agent frameworks (LangChain, Vercel AI) pueden consumir el JSON directamente sin parsear markdown.
 
@@ -36,19 +34,25 @@ return {
 };
 ```
 
-### 2. Tool Annotations (Pendiente — Preparado para SDK v2)
+### 2. Tool Annotations — ADOPTADO
 
 **Que es:** `readOnlyHint`, `destructiveHint`, `idempotentHint` son metadatos que informan al cliente MCP sobre el comportamiento del tool sin cambiar su semantica de ejecucion.
 
-**Estado actual:** El SDK v1 (`server.tool()`) no soporta annotations directamente en el API de alto nivel. Las annotations estan definidas en la spec MCP pero se exponen via el protocol handler de bajo nivel.
-
-**Preparacion:** Todos nuestros tools son read-only (documentacion). Cuando migremos a SDK v2 (`server.registerTool()`), agregaremos:
+**Estado actual:** ADOPTADO. Los 10 tools se registran ya con `server.registerTool()` (no con el `server.tool()` antiguo), que si acepta `annotations` en el bloque de configuracion. 9 de los 10 las declaran:
 
 ```typescript
-annotations: { readOnlyHint: true, destructiveHint: false }
+annotations: {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+},
 ```
 
-**Accion futura:** Migrar a SDK v2 import paths cuando sea estable, agregar annotations a los 10 tools.
+`search_docs`, `get_openapi_schema`, `get_integration_guide`, `get_trust_framework`, `get_protocol_info`, `get_agent_rules`, `get_extension_manifest_schema`, `get_webhook_event_schema` y `get_extension_scopes` — los nueve tools de documentacion pura.
+
+**La excepcion es correcta:** `create_sandbox_key` NO lleva `readOnlyHint`, y no debe llevarlo. Es el unico tool que no es de solo lectura: hace `POST /api/v1/sandbox/key` y **crea** una credencial temporal con efecto en el servidor. Declararlo `readOnlyHint: true` seria mentirle al host MCP sobre un tool con efectos secundarios.
+
+**Pendiente real:** decidir si `create_sandbox_key` debe declarar explicitamente `readOnlyHint: false` + `idempotentHint: false` en lugar de omitir el bloque (omitir deja al host aplicar sus propios valores por defecto, que segun la spec MCP son los conservadores).
 
 ### 3. Dual Transport (stdio + Streamable HTTP)
 
@@ -87,7 +91,7 @@ annotations: { readOnlyHint: true, destructiveHint: false }
 
 **Que es:** API formalizada para recoger input del usuario via formularios (rating, shipping address, etc.). Reemplaza el patron de cast a unknown que usamos en checkout tools.
 
-**Por que no en Developer MCP:** Todos los tools del Developer MCP son read-only. No necesitan input del usuario.
+**Por que no en Developer MCP:** los 9 tools de documentacion son read-only y no necesitan input del usuario; `create_sandbox_key`, el unico con efecto, tampoco lleva parametros (`inputSchema: {}`).
 
 **Donde aplicar:** En SK-1 E3 (Marketplace MCP), refactorizar `get-shipping-rates.ts` y `complete-checkout.ts` para usar `ctx.mcpReq.elicitInput()` oficial.
 
@@ -103,11 +107,11 @@ annotations: { readOnlyHint: true, destructiveHint: false }
 
 ## Resumen de Decisiones
 
-| Novedad           | Adoptada  | Donde                     | Razon                               |
-| ----------------- | --------- | ------------------------- | ----------------------------------- |
-| structuredContent | SI        | 10 tools Developer MCP    | Ventaja competitiva: dual output    |
-| Tool Annotations  | PREPARADO | Cuando SDK v2             | v1 API no lo soporta nativo         |
-| Dual Transport    | SI        | index.ts (stdio + HTTP)   | Maxima compatibilidad IDE           |
-| MCP Apps (UI)     | DIFERIDO  | Post-SK-1                 | Experimental, sin soporte universal |
-| Elicitation API   | DIFERIDO  | SK-1 E3 (Marketplace MCP) | No necesario en docs read-only      |
-| SDK v2 Imports    | DIFERIDO  | Post-SK-1                 | Breaking change en monorepo         |
+| Novedad           | Adoptada | Donde                     | Razon                                                                                                 |
+| ----------------- | -------- | ------------------------- | ----------------------------------------------------------------------------------------------------- |
+| structuredContent | SI       | 10 tools Developer MCP    | Ventaja competitiva: dual output                                                                      |
+| Tool Annotations  | SI       | 9 de 10 tools (read-only) | `registerTool()` las acepta en v1; `create_sandbox_key` queda fuera a proposito (crea una credencial) |
+| Dual Transport    | SI       | index.ts (stdio + HTTP)   | Maxima compatibilidad IDE                                                                             |
+| MCP Apps (UI)     | DIFERIDO | Post-SK-1                 | Experimental, sin soporte universal                                                                   |
+| Elicitation API   | DIFERIDO | SK-1 E3 (Marketplace MCP) | No necesario en docs read-only                                                                        |
+| SDK v2 Imports    | DIFERIDO | Post-SK-1                 | Breaking change en monorepo                                                                           |
