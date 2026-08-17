@@ -93,7 +93,7 @@ flowchart LR
         direction TB
         AG["Agent API\n/api/v1/agent/*"]
         RP["Rules Engine\nR001–R030"]
-        TS["Trust Score\n8 components"]
+        TS["Trust Score\n12 components"]
     end
 
     CD -- "stdio / Streamable HTTP" --> MCP
@@ -131,7 +131,7 @@ Liefert die 30 Händler-Agent-Regeln (R001–R030) mit Tiers, konfigurierbaren S
 
 ### `get_trust_framework`
 
-Liefert die vollständige Methodik des Händler-Trust-Scorings: 8 gewichtete Komponenten, die veröffentlichte Ranking-Formel, Sichtbarkeitszustände des Händlers und Verifizierungsstufen.
+Liefert die vollständige Methodik des Händler-Trust-Scorings: 12 gewichtete Komponenten, die veröffentlichte Ranking-Formel, Sichtbarkeitszustände des Händlers und Verifizierungsstufen.
 
 Keine Parameter.
 

@@ -10,14 +10,29 @@ versioning follows [SemVer](https://semver.org/).
 > production artifacts. Treat every entry below as documentation surface
 > changes, not behaviour changes in the platform.
 
-## Unreleased — Infrastructure hardening + test quality
+## 0.2.0 — 2026-08-17
+
+### Fixed — trust score component table (2026-08-16 external audit, H1)
+
+- `get_trust_framework` listed a second, independent 8-component/weight
+  methodology that matched no model in the codebase — the same
+  phantom-methodology class of bug already fixed in `agent-commerce.json`.
+  Replaced with the real 12-component/weight set from
+  `apps/api/src/services/trust/trust-component-calculator.ts`
+  (`TRUST_WEIGHTS`), matching what `agent-policy-data.json`'s
+  `trustScoreInterpretation.components` already described.
+- New `componentsSourceOfTruth` field on the `get_trust_framework` response
+  points at the source-of-truth file, so a consumer can tell provenance
+  instead of trusting a hand-copied table.
+- `README.md` (4 languages) corrected: "8 components" / "8 weighted
+  components" → 12, matching the real set.
+
+### Infrastructure hardening + test quality
 
 Corrects critical packaging regressions introduced when this package was
 extracted from the monorepo, closes HTTP-mode operational risks, fixes
 documentation drift, and decouples tests from a private SDK internal.
-No new tools or user-facing behaviour changes. Proposed SemVer bump on
-release: included in **0.2.0** (bundled with the rule catalog expansion
-below).
+No new tools or user-facing behaviour changes.
 
 ### Fixed — critical packaging (the package was not buildable or publishable)
 
@@ -102,14 +117,13 @@ below).
 
 ---
 
-## Unreleased — Rule catalog expansion + Extension Marketplace docs surface
+### Rule catalog expansion + Extension Marketplace docs surface
 
 Expands `get_agent_rules` from R001–R010 to the full **R001–R030** catalog
 and adds three read-only tools that explain the Trusteed Extension
 Marketplace contracts. Tool count goes **7 → 10**. All additions are
 documentation surface changes — they do not execute commerce actions and do
-not modify tenant state. Proposed SemVer bump on release: **0.2.0**
-(additive, non-breaking).
+not modify tenant state.
 
 ### Added — rule catalog (R011–R030)
 
@@ -274,6 +288,36 @@ them:
   evidence-verification counterpart. See its CHANGELOG `Unreleased` entry
   for the matching CLI surface (`trust-receipt verify --type
 erasure|manifest|jwks-history`).
+
+### Rule catalog: 30 → 46 rules (R031–R048, R062)
+
+`get_agent_rules` described R001–R030 and served exactly those, so it was
+honest about itself — it just never said the production engine enforces
+46 rules (R001–R062, non-contiguous). A developer had no way to tell the
+other 16 existed.
+
+- The 16 missing rules (`R031`, `R032`, `R034`–`R036`, `R038`, `R039`,
+  `R041`–`R048`, `R062`) are now documented, derived from each evaluator in
+  the engine rather than from the rule names:
+  - `when` mirrors the branch that actually returns HIT — including the
+    ones that are easy to get backwards. `R045` (provider allowlist)
+    BLOCKS an agent whose provider cannot be resolved; `R046` (blocklist)
+    lets it PASS. Same shape, opposite failure mode.
+  - `defaults` lists only values the evaluator really falls back to. Most
+    caps have NO default and say so: `R035`, `R036`, `R038`, `R039`,
+    `R041`, `R042` and `R062` stay inert until the merchant sets them.
+    `R048` is the exception — it ships with a default blocklist of gift
+    cards, license keys, downloadables and stored value.
+  - Field names are taken from the code, not guessed: `R036` reads
+    `maxCentsPerLine`, not `maxCents`.
+- `AGENT_RULES` moves into `src/content/agent-rules.ts`, matching the
+  reference implementation's layout. `AGENT_RULES_VERSION` `1.0.0` →
+  `2.0.0`.
+- The rule-count test now asserts against `AGENT_RULES.length` instead of
+  a literal, so the next catalogue growth shows up as a test failure
+  instead of a stale sentence.
+
+39 tests pass, `tsc` clean.
 
 ## 0.1.0 — 2026-04-29 — Initial public release
 

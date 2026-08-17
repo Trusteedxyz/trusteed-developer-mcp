@@ -93,7 +93,7 @@ flowchart LR
         direction TB
         AG["Agent API\n/api/v1/agent/*"]
         RP["Rules Engine\nR001–R062"]
-        TS["Trust Score\n8 components"]
+        TS["Trust Score\n12 components"]
     end
 
     CD -- "stdio / Streamable HTTP" --> MCP
@@ -131,7 +131,7 @@ Returns the 46 merchant agent rules (R001–R062) with tiers, configurable thres
 
 ### `get_trust_framework`
 
-Returns the full merchant trust scoring methodology: 8 weighted components, the published ranking formula, merchant visibility states, and verification levels.
+Returns the full merchant trust scoring methodology: 12 weighted components, the published ranking formula, merchant visibility states, and verification levels.
 
 No parameters.
 

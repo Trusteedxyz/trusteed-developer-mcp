@@ -2,48 +2,91 @@ import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DeveloperMCPServerConfig } from "../server.js";
 
-const TRUST_COMPONENTS = [
+/**
+ * 2026-08-16 audit (H1, code-review of P1-5 fix): this used to be a SECOND,
+ * independent 8-component/weight table that matched no model in the codebase
+ * — the same phantom methodology that `well-known.routes.ts`'s
+ * `agent-commerce.json` used to hardcode, fixed there by deriving from the
+ * real SSOT. This package cannot do the same: `@trusteed/developer-mcp` is
+ * published standalone (no dependency on `@agenticmcpstores/database` or the
+ * `apps/api` trust engine, by design — see package.json), so it cannot
+ * import `TRUST_WEIGHTS` at build time. Values below are a manual copy kept
+ * in sync by hand, same convention as `agent-policy-data.json`'s
+ * `componentsSourceOfTruth` field.
+ *
+ * SOURCE OF TRUTH: apps/api/src/services/trust/trust-component-calculator.ts
+ * (TRUST_WEIGHTS). Descriptions match apps/dashboard/src/data/agent-policy-data.json
+ * `trustScoreInterpretation.components`. If you change one, change all three.
+ */
+export const COMPONENTS_SOURCE_OF_TRUTH =
+  "apps/api/src/services/trust/trust-component-calculator.ts (TRUST_WEIGHTS)";
+
+export const TRUST_COMPONENTS = [
   {
     name: "catalog_completeness",
-    weight: 0.15,
-    description:
-      "Product field coverage (title, description, price, images, SKU)",
+    weight: 0.11,
+    description: "Fraction of products with complete required fields",
   },
   {
     name: "catalog_freshness",
-    weight: 0.15,
-    description:
-      "Time since last sync — <1h: 1.0, <6h: 0.8, <24h: 0.6, >=24h: 0.3",
+    weight: 0.11,
+    description: "Fraction of product records updated within 24 hours",
   },
   {
     name: "price_accuracy",
-    weight: 0.15,
-    description: "Price consistency between source platform and API",
+    weight: 0.12,
+    description:
+      "Agreement between listed price and checkout price at settlement",
   },
   {
     name: "availability_accuracy",
-    weight: 0.1,
-    description: "Stock declared vs actual availability at checkout",
+    weight: 0.08,
+    description: "Agreement between reported stock and actual stock at checkout",
   },
   {
     name: "policy_coverage",
-    weight: 0.1,
-    description: "Return, shipping, and cancellation policies published",
+    weight: 0.08,
+    description:
+      "Fraction of required policy fields populated (return, shipping, cancellation)",
   },
   {
     name: "checkout_success_rate",
-    weight: 0.15,
-    description: "Percentage of initiated checkouts that complete",
+    weight: 0.11,
+    description:
+      "Fraction of initiated checkouts that completed without error in the last 7 days",
   },
   {
     name: "fulfillment_rate",
-    weight: 0.1,
-    description: "Percentage of orders shipped on time",
+    weight: 0.08,
+    description: "Fraction of confirmed orders shipped within the stated handling time",
   },
   {
     name: "dispute_rate",
-    weight: 0.1,
-    description: "Inverse of chargeback/dispute frequency",
+    weight: 0.07,
+    description:
+      "Inverse of the fraction of orders that generated a dispute or chargeback (lower disputes → higher score)",
+  },
+  {
+    name: "agent_satisfaction_rate",
+    weight: 0.08,
+    description:
+      "Agent feedback signals from completed sessions (success rate of intent fulfillment)",
+  },
+  {
+    name: "response_latency",
+    weight: 0.05,
+    description: "P95 response latency on MCP tool calls vs platform target",
+  },
+  {
+    name: "review_sentiment",
+    weight: 0.05,
+    description: "Aggregated sentiment of post-purchase reviews",
+  },
+  {
+    name: "data_consistency",
+    weight: 0.06,
+    description:
+      "Cross-channel consistency between catalog, search results, and checkout responses",
   },
 ] as const;
 
@@ -122,6 +165,7 @@ const getTrustFrameworkOutputSchema = z.object({
   verificationLevels: z.array(z.string()),
   updateCadence: z.string(),
   range: z.object({ min: z.number(), max: z.number() }),
+  componentsSourceOfTruth: z.string(),
 });
 
 export function registerGetTrustFramework(
@@ -160,7 +204,9 @@ export function registerGetTrustFramework(
 
       const markdown = `## Trusteed Trust Framework
 
-### Trust Score Components (8)
+### Trust Score Components (${TRUST_COMPONENTS.length})
+
+Source of truth: ${COMPONENTS_SOURCE_OF_TRUTH}
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
@@ -215,6 +261,7 @@ ${statesTable}
           verificationLevels: ["UNVERIFIED", "BASIC", "STANDARD", "PREMIUM"],
           updateCadence: "6h",
           range: { min: 0, max: 1 },
+          componentsSourceOfTruth: COMPONENTS_SOURCE_OF_TRUTH,
         },
       };
     }

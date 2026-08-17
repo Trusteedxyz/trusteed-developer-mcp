@@ -1,6 +1,6 @@
 {
   "name": "@trusteed/developer-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Public MCP server exposing Trusteed documentation as interactive tools for IDEs",
   "private": false,
   "type": "module",

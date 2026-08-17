@@ -93,7 +93,7 @@ flowchart LR
         direction TB
         AG["Agent API\n/api/v1/agent/*"]
         RP["Rules Engine\nR001–R030"]
-        TS["Trust Score\n8 components"]
+        TS["Trust Score\n12 components"]
     end
 
     CD -- "stdio / Streamable HTTP" --> MCP
@@ -131,7 +131,7 @@ Renvoie les 30 règles d'agent marchand (R001–R030) avec leurs niveaux (tiers)
 
 ### `get_trust_framework`
 
-Renvoie la méthodologie complète de trust scoring marchand : 8 composantes pondérées, la formule de classement publiée, les états de visibilité marchand et les niveaux de vérification.
+Renvoie la méthodologie complète de trust scoring marchand : 12 composantes pondérées, la formule de classement publiée, les états de visibilité marchand et les niveaux de vérification.
 
 Aucun paramètre.
 
