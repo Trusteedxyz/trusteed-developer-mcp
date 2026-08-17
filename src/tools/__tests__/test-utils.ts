@@ -1,6 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyHandler = (
   args: Record<string, unknown>,
   extra: Record<string, unknown>
